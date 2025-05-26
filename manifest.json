@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "WebRTC Stats Exporter Pro (Auto)",
+  "version": "1.2.0",
+  "description": "Automatically captures WebRTC stats from specified platforms and pushes them to a Prometheus Pushgateway.",
+  "permissions": [
+    "storage",
+    "scripting",
+    "tabs",
+    "activeTab",
+    "alarms"
+  ],
+  "host_permissions": [
+    "*://*.teams.microsoft.com/*",
+    "*://meet.google.com/*",
+    "*://*.awsapps.com/connect/ccp*",
+    "*://*.my.connect.aws/*",
+    "*://*.mypurecloud.com/*",
+    "*://*.genesys.com/*",
+    "*://*.mypurecloud.com.au/*",
+    "*://*.mypurecloud.ie/*",
+    "*://*.mypurecloud.de/*",
+    "*://*.mypurecloud.jp/*",
+    "*://*.usw2.pure.cloud/*",
+    "*://*.cac1.pure.cloud/*",
+    "*://*.euw1.pure.cloud/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["override.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.teams.microsoft.com/*",
+        "*://meet.google.com/*",
+        "*://*.awsapps.com/connect/ccp*",
+        "*://*.my.connect.aws/*",
+        "*://*.mypurecloud.com/*",
+        "*://*.genesys.com/*",
+        "*://*.mypurecloud.com.au/*",
+        "*://*.mypurecloud.ie/*",
+        "*://*.mypurecloud.de/*",
+        "*://*.mypurecloud.jp/*",
+        "*://*.usw2.pure.cloud/*",
+        "*://*.cac1.pure.cloud/*",
+        "*://*.euw1.pure.cloud/*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
