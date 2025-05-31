@@ -1,0 +1,147 @@
+name: Release Chrome Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+    - name: Update manifest version
+      run: |
+        sed -i 's/"version": "[^"]*"/"version": "${{ steps.version.outputs.VERSION }}"/' manifest.json
+        
+    - name: Create extension package
+      run: |
+        # Create build directory
+        mkdir -p build
+        
+        # Copy extension files (exclude development files)
+        cp manifest.json build/
+        cp *.js build/
+        cp *.html build/
+        cp -r assets build/
+        cp -r shared build/
+        cp -r grafana build/
+        cp LICENSE build/
+        cp README.md build/
+        
+        # Create zip package
+        cd build
+        zip -r "../webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip" .
+        cd ..
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Extract changes since last tag
+        PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -1)
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+        else
+          # Generate changelog from commits
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..${{ github.ref_name }} | head -20)
+          
+          # Escape newlines for GitHub output
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          
+          echo "CHANGELOG=${CHANGELOG}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << 'EOF'
+        # WebRTC Stats Exporter Pro v${{ steps.version.outputs.VERSION }}
+        
+        ## 🚀 What's New
+        
+        ${{ steps.changelog.outputs.CHANGELOG }}
+        
+        ## 📦 Installation
+        
+        1. Download the `webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip` file
+        2. Extract the contents to a local folder
+        3. Open Chrome and navigate to `chrome://extensions/`
+        4. Enable "Developer mode" in the top right
+        5. Click "Load unpacked" and select the extracted folder
+        6. Configure the extension via the options page
+        
+        ## 🔧 Features
+        
+        - ✅ Automatic WebRTC stats collection from major platforms
+        - ✅ Teams, Google Meet, Amazon Connect, and Genesys Cloud support
+        - ✅ Prometheus Pushgateway integration
+        - ✅ Configurable collection intervals and filtering
+        - ✅ Real-time connection monitoring
+        - ✅ Comprehensive test coverage (91%+)
+        
+        ## 🌐 Supported Platforms
+        
+        - Microsoft Teams (`teams.microsoft.com`)
+        - Google Meet (`meet.google.com`)
+        - Amazon Connect (`awsapps.com`, `my.connect.aws`)
+        - Genesys Cloud (`mypurecloud.com`, `genesys.com`, regional domains)
+        
+        ## 📋 Requirements
+        
+        - Chrome/Chromium browser
+        - Prometheus Pushgateway endpoint
+        - Network access to target platforms
+        
+        ## 🐛 Bug Reports
+        
+        Report issues at: https://github.com/Brownster/agent-webrtc/issues
+        
+        ---
+        
+        **Full Changelog**: https://github.com/Brownster/agent-webrtc/compare/${PREVIOUS_TAG:-initial}...${{ github.ref_name }}
+        EOF
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "WebRTC Stats Exporter Pro v${{ steps.version.outputs.VERSION }}"
+        body_path: release_notes.md
+        files: |
+          webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: extension-build-v${{ steps.version.outputs.VERSION }}
+        path: |
+          build/
+          webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip
+        retention-days: 30

@@ -12,7 +12,9 @@
     "lint:check": "eslint src/ shared/ *.js --ext .js",
     "validate": "npm run lint:check && npm run test:ci",
     "build": "npm run validate",
-    "dev": "npm run test:watch"
+    "dev": "npm run test:watch",
+    "package": "node scripts/package-extension.js",
+    "package:zip": "npm run validate && npm run package"
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",
