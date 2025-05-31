@@ -1,23 +1,19 @@
 /* global chrome, pako */
 
+// Import shared modules
+importScripts("assets/pako.min.js");
+importScripts("shared/config.js");
+importScripts("shared/domains.js");
+importScripts("shared/storage.js");
+
+// Use direct references to avoid variable declarations that might conflict
+// These reference the global objects set by the shared modules
+
 function log(...args) {
-  console.log.apply(null, ["[webrtc-internal-exporter:background]", ...args]);
+  console.log.apply(null, [self.WebRTCExporterConfig.CONSTANTS.LOGGING.PREFIX + ":background]", ...args]);
 }
 
 log("loaded");
-
-importScripts("assets/pako.min.js");
-
-const DEFAULT_OPTIONS = {
-  url: "http://localhost:9091",
-  username: "",
-  password: "",
-  updateInterval: 2,
-  gzip: false,
-  job: "webrtc-internals-exporter",
-  enabledOrigins: {},
-  enabledStats: ["inbound-rtp", "remote-inbound-rtp", "outbound-rtp"],
-};
 
 const options = {};
 
@@ -25,61 +21,47 @@ const options = {};
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   log("onInstalled", reason);
   if (reason === "install") {
-    await chrome.storage.sync.set(DEFAULT_OPTIONS);
+    await chrome.storage.sync.set(self.WebRTCExporterConfig.DEFAULT_OPTIONS);
   } else if (reason === "update") {
     const options = await chrome.storage.sync.get();
     await chrome.storage.sync.set({
-      ...DEFAULT_OPTIONS,
+      ...self.WebRTCExporterConfig.DEFAULT_OPTIONS,
       ...options,
     });
   }
 
-  await chrome.alarms.create("webrtc-internals-exporter-alarm", {
-    delayInMinutes: 1,
-    periodInMinutes: 1,
+  await chrome.alarms.create(self.WebRTCExporterConfig.CONSTANTS.EXTENSION.ALARM_NAME, {
+    delayInMinutes: self.WebRTCExporterConfig.CONSTANTS.UPDATE_INTERVALS.CLEANUP_INTERVAL_MINUTES,
+    periodInMinutes: self.WebRTCExporterConfig.CONSTANTS.UPDATE_INTERVALS.CLEANUP_INTERVAL_MINUTES,
   });
 });
 
-// Define target domains that support auto-capture
-const TARGET_DOMAINS = [
-  "teams.microsoft.com",
-  "meet.google.com",
-  "awsapps.com",
-  "my.connect.aws",
-  "mypurecloud.com",
-  "genesys.com",
-  "mypurecloud.com.au",
-  "mypurecloud.ie",
-  "mypurecloud.de",
-  "mypurecloud.jp",
-  "usw2.pure.cloud",
-  "cac1.pure.cloud",
-  "euw1.pure.cloud"
-];
-
-function isTargetDomain(url) {
-  try {
-    const hostname = new URL(url).hostname;
-    return TARGET_DOMAINS.some(domain => hostname.includes(domain));
-  } catch {
-    return false;
-  }
-}
-
 async function updateTabInfo(tab) {
   const tabId = tab.id;
-  const origin = new URL(tab.url || tab.pendingUrl).origin;
-  const isTarget = isTargetDomain(tab.url || tab.pendingUrl);
-
-  // Auto-enable on target domains unless explicitly disabled
-  const isEnabled = isTarget && (options.enabledOrigins?.[origin] !== false);
+  const url = tab.url || tab.pendingUrl;
+  
+  // Skip if no valid URL or it's a chrome:// page
+  if (!url || !url.startsWith('http')) {
+    chrome.action.setTitle({
+      title: `WebRTC Internals Exporter (no valid page)`,
+      tabId,
+    });
+    chrome.action.setBadgeText({ text: "", tabId });
+    return;
+  }
+  
+  const origin = self.WebRTCExporterDomains.DomainManager.extractOrigin(url);
+  if (!origin) {
+    log(`Invalid URL: ${url}`);
+    return;
+  }
+  
+  const isTarget = self.WebRTCExporterDomains.DomainManager.isTargetDomain(url);
+  const isEnabled = self.WebRTCExporterDomains.DomainManager.shouldAutoEnable(origin, options.enabledOrigins);
 
   if (isEnabled) {
-    const { peerConnectionsPerOrigin } = await chrome.storage.local.get(
-      "peerConnectionsPerOrigin",
-    );
-    const peerConnections =
-      (peerConnectionsPerOrigin && peerConnectionsPerOrigin[origin]) || 0;
+    const data = await self.WebRTCExporterStorage.StorageManager.getLocal(self.WebRTCExporterConfig.CONSTANTS.STORAGE_KEYS.PEER_CONNECTIONS_PER_ORIGIN);
+    const peerConnections = (data[self.WebRTCExporterConfig.CONSTANTS.STORAGE_KEYS.PEER_CONNECTIONS_PER_ORIGIN]?.[origin]) || 0;
 
     chrome.action.setTitle({
       title: `WebRTC Internals Exporter\nActive Peer Connections: ${peerConnections}`,
@@ -105,15 +87,18 @@ async function optionsUpdated() {
   await updateTabInfo(tab);
 }
 
-chrome.storage.sync.get().then((ret) => {
-  Object.assign(options, ret);
+// Load options using StorageManager
+self.WebRTCExporterStorage.StorageManager.getOptions().then((loadedOptions) => {
+  Object.assign(options, loadedOptions);
   log("options loaded");
   optionsUpdated();
+}).catch((error) => {
+  log("Error loading options:", error);
+  Object.assign(options, self.WebRTCExporterConfig.DEFAULT_OPTIONS);
 });
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "sync") return;
-
+// Listen for options changes
+self.WebRTCExporterStorage.StorageManager.onChanged((changes) => {
   for (let [key, { newValue }] of Object.entries(changes)) {
     options[key] = newValue;
   }
@@ -132,11 +117,16 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   if (!changeInfo.url) return;
-  await updateTabInfo({ id: tabId, url: changeInfo.url });
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    await updateTabInfo(tab);
+  } catch (err) {
+    log(`tab updated error: ${err.message}`);
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "webrtc-internals-exporter-alarm") {
+  if (alarm.name === self.WebRTCExporterConfig.CONSTANTS.EXTENSION.ALARM_NAME) {
     cleanupPeerConnections().catch((err) => {
       log(`cleanup peer connections error: ${err.message}`);
     });
@@ -258,12 +248,7 @@ async function sendData(method, { id, origin }, data) {
   return response.text();
 }
 
-const QualityLimitationReasons = {
-  none: 0,
-  bandwidth: 1,
-  cpu: 2,
-  other: 3,
-};
+// Use quality limitation reasons from shared config
 
 /**
  * sendPeerConnectionStats
@@ -287,6 +272,11 @@ async function sendPeerConnectionStats(url, id, state, values) {
     const labels = [`pageUrl="${url}"`];
     const metrics = [];
 
+    // Add agent_id label if configured
+    if (options.agentId) {
+      labels.push(`agent_id="${options.agentId}"`);
+    }
+
     if (value.type === "peer-connection") {
       labels.push(`state="${state}"`);
     }
@@ -302,9 +292,9 @@ async function sendPeerConnectionStats(url, id, state, values) {
         });
       } else if (
         key === "qualityLimitationReason" &&
-        QualityLimitationReasons[v] !== undefined
+        self.WebRTCExporterConfig.CONSTANTS.QUALITY_LIMITATION_REASONS[v] !== undefined
       ) {
-        metrics.push([key, QualityLimitationReasons[v]]);
+        metrics.push([key, self.WebRTCExporterConfig.CONSTANTS.QUALITY_LIMITATION_REASONS[v]]);
       } else if (key === "googTimingFrameInfo") {
         // TODO
       } else {

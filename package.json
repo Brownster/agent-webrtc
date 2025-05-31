@@ -1,40 +1,119 @@
 {
-  "name": "@vpalmisano/webrtc-internals-exporter",
-  "author": {
-    "name": "Vittorio Palmisano",
-    "url": "https://github.com/vpalmisano"
-  },
-  "version": "0.1.11",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
+  "name": "webrtc-stats-exporter-pro",
+  "version": "1.6.0",
+  "description": "Chrome extension that automatically captures WebRTC stats and exports them to Prometheus Pushgateway",
+  "main": "background.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview --port 4173",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
-  },
-  "dependencies": {
-    "@popperjs/core": "^2.11.6",
-    "bootstrap": "^5.3.2",
-    "bootstrap-icons": "^1.11.1",
-    "events": "^3.3.0",
-    "pako": "^2.1.0",
-    "util": "^0.12.4",
-    "vue": "^3.3.8",
-    "vuetify": "^3.3.23"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --coverage --ci --reporters=default --reporters=jest-junit",
+    "lint": "eslint src/ shared/ *.js --ext .js --fix",
+    "lint:check": "eslint src/ shared/ *.js --ext .js",
+    "validate": "npm run lint:check && npm run test:ci",
+    "build": "npm run validate",
+    "dev": "npm run test:watch"
   },
   "devDependencies": {
-    "@mdi/font": "^7.3.67",
-    "@rushstack/eslint-patch": "^1.1.4",
-    "@vitejs/plugin-vue": "^4.4.0",
-    "@vue/eslint-config-prettier": "^8.0.0",
-    "@vuelidate/core": "^2.0.3",
-    "@vuelidate/validators": "^2.0.4",
-    "eslint": "^8.52.0",
-    "eslint-plugin-vue": "^9.18.1",
-    "prettier": "^3.0.3",
-    "vite": "^4.5.0",
-    "vite-plugin-package-version": "^1.0.2"
+    "@babel/core": "^7.23.9",
+    "@babel/preset-env": "^7.23.9",
+    "@jest/globals": "^29.7.0",
+    "@types/chrome": "^0.0.254",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jest": "^27.6.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-junit": "^16.0.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFiles": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "collectCoverageFrom": [
+      "shared/**/*.js",
+      "*.js",
+      "!manifest.json",
+      "!tests/**/*",
+      "!coverage/**/*",
+      "!node_modules/**/*",
+      "!assets/**/*"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
+    "moduleFileExtensions": [
+      "js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js",
+      "**/tests/**/*.spec.js"
+    ],
+    "transform": {
+      "^.+\\.js$": ["babel-jest", { "presets": [["@babel/preset-env", { "targets": { "node": "current" } }]] }]
+    }
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "jest": true,
+      "webextensions": true
+    },
+    "extends": [
+      "standard",
+      "plugin:jest/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
+    "plugins": [
+      "jest"
+    ],
+    "globals": {
+      "chrome": "readonly",
+      "globalThis": "readonly",
+      "self": "readonly",
+      "window": "readonly"
+    },
+    "rules": {
+      "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "prefer-const": "error",
+      "jest/expect-expect": "error"
+    }
+  },
+  "babel": {
+    "presets": [
+      ["@babel/preset-env", {
+        "targets": {
+          "node": "current"
+        }
+      }]
+    ]
+  },
+  "keywords": [
+    "webrtc",
+    "prometheus",
+    "chrome-extension",
+    "monitoring",
+    "teams",
+    "google-meet"
+  ],
+  "author": "WebRTC Stats Exporter Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/webrtc-stats-exporter-pro.git"
   }
 }

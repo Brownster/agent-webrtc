@@ -1,0 +1,300 @@
+name: WebRTC Stats Exporter CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linting
+      run: npm run lint:check
+      
+    - name: Run tests with coverage
+      run: npm run test:ci
+      
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  validate-extension:
+    name: Validate Extension
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Validate manifest
+      run: |
+        node -e "
+          const manifest = require('./manifest.json');
+          const package = require('./package.json');
+          
+          // Validate versions match
+          if (manifest.version !== package.version) {
+            console.error('Version mismatch: manifest.json (' + manifest.version + ') vs package.json (' + package.version + ')');
+            process.exit(1);
+          }
+          
+          // Validate required fields
+          const required = ['name', 'version', 'manifest_version', 'description', 'permissions'];
+          for (const field of required) {
+            if (!manifest[field]) {
+              console.error('Missing required field in manifest.json: ' + field);
+              process.exit(1);
+            }
+          }
+          
+          // Validate manifest version
+          if (manifest.manifest_version !== 3) {
+            console.error('Expected Manifest V3, got: ' + manifest.manifest_version);
+            process.exit(1);
+          }
+          
+          console.log('✅ Manifest validation passed');
+        "
+        
+    - name: Check shared modules syntax
+      run: |
+        node -c shared/config.js
+        node -c shared/domains.js  
+        node -c shared/storage.js
+        echo "✅ Shared modules syntax check passed"
+        
+    - name: Validate extension files exist
+      run: |
+        required_files=(
+          "background.js"
+          "content-script.js"
+          "override.js"
+          "popup.html"
+          "popup.js"
+          "options.html"
+          "options.js"
+          "shared/config.js"
+          "shared/domains.js"
+          "shared/storage.js"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing required file: $file"
+            exit 1
+          fi
+        done
+        
+        echo "✅ All required extension files present"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run security audit
+      run: npm audit --audit-level=moderate
+      
+    - name: Check for hardcoded secrets
+      run: |
+        # Check for common secret patterns
+        if grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]{8,}['\"]" --include="*.js" --exclude-dir=node_modules .; then
+          echo "❌ Potential hardcoded secrets found"
+          exit 1
+        fi
+        
+        # Check for API keys
+        if grep -r -E "[A-Za-z0-9]{32,}" --include="*.js" --exclude-dir=node_modules --exclude-dir=tests .; then
+          echo "⚠️  Potential API keys found, please verify they are not sensitive"
+        fi
+        
+        echo "✅ Security scan completed"
+
+  build-validation:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    needs: [test, validate-extension]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run full validation
+      run: npm run validate
+      
+    - name: Create extension package
+      run: |
+        # Create a clean directory for the extension
+        mkdir -p dist/extension
+        
+        # Copy extension files (excluding dev files)
+        cp manifest.json dist/extension/
+        cp *.js dist/extension/
+        cp *.html dist/extension/
+        cp -r shared dist/extension/
+        cp -r assets dist/extension/
+        
+        # Create zip package
+        cd dist/extension
+        zip -r ../webrtc-stats-exporter-pro-${{ github.sha }}.zip .
+        cd ../..
+        
+        echo "✅ Extension package created successfully"
+        
+    - name: Upload extension package
+      uses: actions/upload-artifact@v3
+      with:
+        name: extension-package
+        path: dist/webrtc-stats-exporter-pro-*.zip
+        retention-days: 30
+
+  performance-test:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run performance tests
+      run: |
+        # Test shared module loading performance
+        node -e "
+          console.time('Load shared modules');
+          
+          // Simulate loading shared modules
+          const fs = require('fs');
+          const configCode = fs.readFileSync('shared/config.js', 'utf8');
+          const domainsCode = fs.readFileSync('shared/domains.js', 'utf8');
+          const storageCode = fs.readFileSync('shared/storage.js', 'utf8');
+          
+          // Evaluate code (simulates extension loading)
+          eval(configCode);
+          eval(domainsCode);  
+          eval(storageCode);
+          
+          console.timeEnd('Load shared modules');
+          
+          // Test domain validation performance
+          const DomainManager = globalThis.WebRTCExporterDomains.DomainManager;
+          
+          console.time('Domain validation (1000 URLs)');
+          for (let i = 0; i < 1000; i++) {
+            DomainManager.isTargetDomain('https://meet.google.com/test-' + i);
+          }
+          console.timeEnd('Domain validation (1000 URLs)');
+          
+          console.log('✅ Performance tests completed');
+        "
+
+  compatibility-test:
+    name: Browser Compatibility
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Test Chrome extension compatibility
+      run: |
+        # Test that extension uses only supported Chrome APIs
+        echo "Checking Chrome API usage..."
+        
+        # Check for unsupported APIs
+        if grep -r "chrome\.extension\." --include="*.js" --exclude-dir=node_modules .; then
+          echo "❌ Uses deprecated chrome.extension API"
+          exit 1
+        fi
+        
+        if grep -r "chrome\.browserAction\." --include="*.js" --exclude-dir=node_modules .; then
+          echo "❌ Uses deprecated chrome.browserAction API (use chrome.action instead)"
+          exit 1
+        fi
+        
+        # Check for Manifest V3 compliance
+        if grep -r "background.*persistent" manifest.json; then
+          echo "❌ Uses persistent background page (not allowed in Manifest V3)"
+          exit 1
+        fi
+        
+        echo "✅ Browser compatibility check passed"
+
+# Notify on failure (optional)
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [test, validate-extension, security-scan, build-validation]
+    if: failure()
+    
+    steps:
+    - name: Notify failure
+      run: |
+        echo "❌ CI pipeline failed. Please check the logs above."
+        echo "Common issues:"
+        echo "- Test failures"
+        echo "- Linting errors"  
+        echo "- Security vulnerabilities"
+        echo "- Extension validation failures"

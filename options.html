@@ -1,16 +1,211 @@
-<!doctype html>
-<html lang="en">
-  <head>
+<!DOCTYPE html>
+<html>
+<head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>WebRTC Internals Exporter</title>
-  <script type="module" crossorigin src="assets/options-090652f9.js"></script>
-  <link rel="modulepreload" crossorigin href="assets/_plugin-vue_export-helper-deb87276.js">
-  <link rel="stylesheet" href="assets/_plugin-vue_export-helper.css">
-  <link rel="stylesheet" href="assets/options.css">
+    <title>WebRTC Internals Exporter - Options</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0,123,255,0.25);
+        }
+        .checkbox-group {
+            margin: 10px 0;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .domains-section {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+        .domain-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .domain-item:last-child {
+            border-bottom: none;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.auto-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .toggle-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .toggle-btn:hover {
+            background: #545b62;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <div id="app"></div>
-  
+    <div class="container">
+        <h1>WebRTC Stats Exporter Pro - Configuration</h1>
+        
+        <div id="successMessage" class="success-message">
+            Options saved successfully!
+        </div>
+
+        <form id="optionsForm">
+            <div class="form-group">
+                <label for="url">Pushgateway URL:</label>
+                <input type="url" id="url" name="url" placeholder="http://localhost:9091" required>
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                    Note: For custom domains, you may need to reload the extension after changing the URL
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username (optional):</label>
+                <input type="text" id="username" name="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password (optional):</label>
+                <input type="password" id="password" name="password">
+            </div>
+
+            <div class="form-group">
+                <label for="updateInterval">Update Interval (seconds):</label>
+                <input type="number" id="updateInterval" name="updateInterval" min="1" value="2">
+            </div>
+
+            <div class="form-group">
+                <label for="job">Pushgateway Job Name:</label>
+                <input type="text" id="job" name="job" value="webrtc-internals-exporter">
+            </div>
+
+            <div class="form-group">
+                <label for="agentId">Agent ID (for metric filtering):</label>
+                <input type="text" id="agentId" name="agentId" placeholder="e.g., agent001, john.doe, call-center-01">
+                <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                    This will be added as an 'agent_id' label to all metrics for filtering in Grafana
+                </small>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="gzip" name="gzip">
+                <label for="gzip">Use gzip compression</label>
+            </div>
+
+            <div class="form-group">
+                <label>Enabled WebRTC Stats Types:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="stat-inbound-rtp" name="enabledStats" value="inbound-rtp" checked>
+                    <label for="stat-inbound-rtp">Inbound RTP</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="stat-outbound-rtp" name="enabledStats" value="outbound-rtp" checked>
+                    <label for="stat-outbound-rtp">Outbound RTP</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="stat-remote-inbound-rtp" name="enabledStats" value="remote-inbound-rtp" checked>
+                    <label for="stat-remote-inbound-rtp">Remote Inbound RTP</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="stat-candidate-pair" name="enabledStats" value="candidate-pair">
+                    <label for="stat-candidate-pair">Candidate Pair</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="stat-media-source" name="enabledStats" value="media-source">
+                    <label for="stat-media-source">Media Source</label>
+                </div>
+            </div>
+
+            <div class="domains-section">
+                <h3>Target Domains (Auto-capture)</h3>
+                <p>These domains automatically capture WebRTC stats. You can disable specific domains if needed.</p>
+                <div id="domainsList">
+                    <!-- Domains will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <button type="submit">Save Options</button>
+        </form>
+    </div>
+
+    <script src="shared/config.js"></script>
+    <script src="shared/domains.js"></script>
+    <script src="shared/storage.js"></script>
+    <script src="options.js"></script>
 </body>
 </html>

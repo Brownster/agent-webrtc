@@ -14,6 +14,9 @@ if (window.location.protocol.startsWith("http")) {
     }
   };
 
+  // Always log injection to verify it's working
+  console.log("[webrtc-internal-exporter:content-script] Content script loaded on", window.location.origin);
+
   const injectScript = (file_path) => {
     const head = document.querySelector("head");
     const script = document.createElement("script");
@@ -50,7 +53,7 @@ if (window.location.protocol.startsWith("http")) {
           ? false 
           : true;
         options.updateInterval = (ret.updateInterval || 2) * 1000;
-        options.enabledStats = Object.values(ret.enabledStats || {});
+        options.enabledStats = ret.enabledStats || ["inbound-rtp", "remote-inbound-rtp", "outbound-rtp"];
         sendOptions();
       });
 
@@ -70,7 +73,7 @@ if (window.location.protocol.startsWith("http")) {
           options.updateInterval = newValue * 1000;
           changed = true;
         } else if (key === "enabledStats") {
-          options.enabledStats = Object.values(newValue);
+          options.enabledStats = newValue || ["inbound-rtp", "remote-inbound-rtp", "outbound-rtp"];
           changed = true;
         }
       }
@@ -84,8 +87,10 @@ if (window.location.protocol.startsWith("http")) {
     window.addEventListener("message", async (message) => {
       const { event, url, id, state, values } = message.data;
       if (event === "webrtc-internal-exporter:ready") {
+        console.log("[webrtc-internal-exporter:content-script] Override script ready, sending options");
         sendOptions();
       } else if (event === "webrtc-internal-exporter:peer-connection-stats") {
+        console.log("[webrtc-internal-exporter:content-script] Received peer-connection-stats", { url, id, state, valuesCount: values?.length });
         log("peer-connection-stats", { url, id, state, values });
         try {
           const response = await chrome.runtime.sendMessage({
@@ -97,10 +102,13 @@ if (window.location.protocol.startsWith("http")) {
               values,
             },
           });
-          if (response.error) {
+          if (response?.error) {
             log(`error: ${response.error}`);
+          } else {
+            console.log("[webrtc-internal-exporter:content-script] Successfully sent stats to background");
           }
         } catch (error) {
+          console.error("[webrtc-internal-exporter:content-script] Error sending stats to background:", error.message);
           log(`error: ${error.message}`);
         }
       }
