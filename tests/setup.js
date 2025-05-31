@@ -3,14 +3,8 @@
  * Configures global test environment for Chrome extension testing
  */
 
-// Define globalThis if not defined
-if (typeof globalThis === 'undefined') {
-  Object.defineProperty(global, 'globalThis', {
-    value: global,
-    writable: true,
-    configurable: true
-  });
-}
+// Force globalThis polyfill for Jest
+global.globalThis = global;
 
 // Mock self for service worker environment
 if (typeof self === 'undefined') {
@@ -37,11 +31,7 @@ global.chrome = {
       get: jest.fn().mockResolvedValue({}),
       set: jest.fn().mockResolvedValue(),
       clear: jest.fn(),
-      remove: jest.fn(),
-      onChanged: {
-        addListener: jest.fn(),
-        removeListener: jest.fn()
-      }
+      remove: jest.fn()
     },
     onChanged: {
       addListener: jest.fn(),
@@ -54,18 +44,36 @@ global.chrome = {
     onMessage: {
       addListener: jest.fn(),
       removeListener: jest.fn()
-    }
+    },
+    onInstalled: {
+      addListener: jest.fn()
+    },
+    openOptionsPage: jest.fn()
   },
   tabs: {
     query: jest.fn().mockResolvedValue([]),
-    onUpdated: {
-      addListener: jest.fn(),
-      removeListener: jest.fn()
+    get: jest.fn(),
+    onActivated: {
+      addListener: jest.fn()
     },
-    onRemoved: {
-      addListener: jest.fn(),
-      removeListener: jest.fn()
+    onUpdated: {
+      addListener: jest.fn()
     }
+  },
+  action: {
+    setTitle: jest.fn(),
+    setBadgeText: jest.fn(),
+    setBadgeBackgroundColor: jest.fn()
+  },
+  alarms: {
+    create: jest.fn(),
+    clear: jest.fn(),
+    onAlarm: {
+      addListener: jest.fn()
+    }
+  },
+  scripting: {
+    executeScript: jest.fn()
   }
 };
 
@@ -80,35 +88,6 @@ global.fetch = jest.fn().mockResolvedValue({
 global.pako = {
   gzip: jest.fn().mockReturnValue('mocked-gzipped-data')
 };
-
-// Setup test environment before each test
-beforeEach(() => {
-  // Clear all mocks
-  jest.clearAllMocks();
-  
-  // Reset importScripts mock
-  if (global.importScripts && typeof global.importScripts.mockImplementation === 'function') {
-    global.importScripts.mockImplementation(() => {
-      // Do nothing - modules are loaded via loadSharedModules
-    });
-  }
-  
-  // Reset fetch mock
-  global.fetch.mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve({}),
-    text: () => Promise.resolve('')
-  });
-  
-  // Reset pako mock
-  global.pako.gzip = jest.fn().mockReturnValue('mocked-gzipped-data');
-});
-
-// Clean up after each test
-afterEach(() => {
-  // Clear any timers or intervals
-  jest.clearAllTimers();
-});
 
 // Helper function to create mock tab objects
 global.createMockTab = (overrides = {}) => ({

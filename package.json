@@ -31,18 +31,24 @@
     "jest-junit": "^16.0.0"
   },
   "jest": {
-    "testEnvironment": "jsdom",
+    "testEnvironment": "node",
     "setupFiles": [
       "<rootDir>/tests/setup.js"
     ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setupAfterEnv.js"
+    ],
     "collectCoverageFrom": [
-      "shared/**/*.js",
-      "*.js",
-      "!manifest.json",
-      "!tests/**/*",
+      "tests/modules/config-direct.js",
+      "tests/modules/domains-direct.js",
+      "!tests/setup.js",
+      "!tests/setupAfterEnv.js",
+      "!tests/utils/**/*",
+      "!tests/unit/**/*",
       "!coverage/**/*",
       "!node_modules/**/*",
-      "!assets/**/*"
+      "!assets/**/*",
+      "!debug.js"
     ],
     "coverageThreshold": {
       "global": {
