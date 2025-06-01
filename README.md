@@ -1,8 +1,8 @@
 # WebRTC Stats Exporter Pro
 
-[![CI](https://github.com/your-org/webrtc-stats-exporter-pro/workflows/WebRTC%20Stats%20Exporter%20CI/badge.svg)](https://github.com/your-org/webrtc-stats-exporter-pro/actions)
-[![Tests](https://img.shields.io/badge/tests-37%20passing-brightgreen)](https://github.com/your-org/webrtc-stats-exporter-pro/actions)
-[![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)](https://github.com/your-org/webrtc-stats-exporter-pro/actions)
+[![WebRTC Stats Exporter CI](https://github.com/Brownster/agent-webrtc/actions/workflows/ci.yml/badge.svg)](https://github.com/Brownster/agent-webrtc/actions/workflows/ci.yml)
+[![Test Suite](https://img.shields.io/github/actions/job/status/Brownster/agent-webrtc/Test%20Suite/main?label=tests)](https://github.com/Brownster/agent-webrtc/actions/workflows/ci.yml)
+[![coverage](https://codecov.io/gh/Brownster/agent-webrtc/graph/badge.svg?branch=master)](https://codecov.io/gh/Brownster/agent-webrtc)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
