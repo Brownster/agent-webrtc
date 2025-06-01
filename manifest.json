@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WebRTC Stats Exporter Pro (Auto)",
-  "version": "1.6.2",
+  "version": "2.0.0",
   "description": "Automatically captures WebRTC stats from specified platforms and pushes them to a Prometheus Pushgateway.",
   "permissions": [
     "storage",
