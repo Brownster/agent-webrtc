@@ -44,7 +44,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["override.js", "shared/config.js", "shared/domains.js", "shared/storage.js"],
+      "resources": ["override.js", "shared/config.js", "shared/domains.js", "shared/storage.js", "background/stats-formatter.js"],
       "matches": ["<all_urls>"]
     }
   ],

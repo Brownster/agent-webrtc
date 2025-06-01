@@ -33,6 +33,7 @@ const INCLUDE_FILES = [
 const INCLUDE_DIRS = [
   'assets',
   'shared',
+  'background',
   'grafana'
 ]
 

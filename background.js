@@ -5,6 +5,7 @@ importScripts('assets/pako.min.js')
 importScripts('shared/config.js')
 importScripts('shared/domains.js')
 importScripts('shared/storage.js')
+importScripts('background/stats-formatter.js')
 
 // Use direct references to avoid variable declarations that might conflict
 // These reference the global objects set by the shared modules
@@ -264,54 +265,12 @@ async function sendPeerConnectionStats (url, id, state, values) {
     return sendData('DELETE', { id, origin })
   }
 
-  let data = ''
-  const sentTypes = new Set()
-
-  values.forEach((value) => {
-    const type = value.type.replace(/-/g, '_')
-    const labels = [`pageUrl="${url}"`]
-    const metrics = []
-
-    // Add agent_id label if configured
-    if (options.agentId) {
-      labels.push(`agent_id="${options.agentId}"`)
-    }
-
-    if (value.type === 'peer-connection') {
-      labels.push(`state="${state}"`)
-    }
-
-    Object.entries(value).forEach(([key, v]) => {
-      if (typeof v === 'number') {
-        metrics.push([key, v])
-      } else if (typeof v === 'object') {
-        Object.entries(v).forEach(([subkey, subv]) => {
-          if (typeof subv === 'number') {
-            metrics.push([`${key}_${subkey}`, subv])
-          }
-        })
-      } else if (
-        key === 'qualityLimitationReason' &&
-        self.WebRTCExporterConfig.CONSTANTS.QUALITY_LIMITATION_REASONS[v] !== undefined
-      ) {
-        metrics.push([key, self.WebRTCExporterConfig.CONSTANTS.QUALITY_LIMITATION_REASONS[v]])
-      } else if (key === 'googTimingFrameInfo') {
-        // TODO
-      } else {
-        labels.push(`${key}="${v}"`)
-      }
-    })
-
-    metrics.forEach(([key, v]) => {
-      const name = `${type}_${key.replace(/-/g, '_')}`
-      let typeDesc = ''
-
-      if (!sentTypes.has(name)) {
-        typeDesc = `# TYPE ${name} gauge\n`
-        sentTypes.add(name)
-      }
-      data += `${typeDesc}${name}{${labels.join(',')}} ${v}\n`
-    })
+  // Use the new StatsFormatter module
+  const data = self.WebRTCExporterStatsFormatter.StatsFormatter.formatStats({
+    url,
+    state,
+    values,
+    agentId: options.agentId
   })
 
   if (data.length > 0) {
