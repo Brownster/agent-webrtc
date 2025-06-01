@@ -1,6 +1,6 @@
 {
   "name": "webrtc-stats-exporter-pro",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Chrome extension that automatically captures WebRTC stats and exports them to Prometheus Pushgateway",
   "main": "background.js",
   "scripts": {

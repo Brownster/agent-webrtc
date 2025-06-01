@@ -7,6 +7,8 @@ importScripts('shared/domains.js')
 importScripts('shared/storage.js')
 importScripts('background/stats-formatter.js')
 importScripts('background/pushgateway-client.js')
+importScripts('background/options-manager.js')
+importScripts('background/connection-tracker.js')
 
 // Use direct references to avoid variable declarations that might conflict
 // These reference the global objects set by the shared modules
@@ -17,11 +19,29 @@ function log (...args) {
 
 log('loaded')
 
-const options = {}
-
-// Initialize Pushgateway client and stats callback
+// Initialize modules
 const pushgatewayClient = new self.WebRTCExporterPushgateway.PushgatewayClient()
 const statsCallback = self.WebRTCExporterPushgateway.createStatsCallback(chrome.storage)
+const optionsManager = self.WebRTCExporterOptionsManager.createOptionsManager({
+  storageManager: self.WebRTCExporterStorage.StorageManager,
+  config: self.WebRTCExporterConfig
+})
+
+// Create logger object for connection tracker
+const logger = { log }
+
+// Initialize connection tracker with cleanup callback
+const connectionTracker = self.WebRTCExporterConnectionTracker.createConnectionTrackerWithCleanup({
+  storageManager: self.WebRTCExporterStorage.StorageManager,
+  logger,
+  config: self.WebRTCExporterConfig
+}, async ({ id, origin }) => {
+  // Cleanup callback - delegate to sendData DELETE
+  return sendData('DELETE', { id, origin })
+})
+
+// For backward compatibility, keep options object that gets updated
+const options = {}
 
 // Handle install/update.
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
@@ -66,8 +86,8 @@ async function updateTabInfo (tab) {
   const isEnabled = self.WebRTCExporterDomains.DomainManager.shouldAutoEnable(origin, options.enabledOrigins)
 
   if (isEnabled) {
-    const data = await self.WebRTCExporterStorage.StorageManager.getLocal(self.WebRTCExporterConfig.CONSTANTS.STORAGE_KEYS.PEER_CONNECTIONS_PER_ORIGIN)
-    const peerConnections = (data[self.WebRTCExporterConfig.CONSTANTS.STORAGE_KEYS.PEER_CONNECTIONS_PER_ORIGIN]?.[origin]) || 0
+    const stats = await connectionTracker.getConnectionStats()
+    const peerConnections = stats.originCounts[origin] || 0
 
     chrome.action.setTitle({
       title: `WebRTC Internals Exporter\nActive Peer Connections: ${peerConnections}`,
@@ -93,8 +113,8 @@ async function optionsUpdated () {
   await updateTabInfo(tab)
 }
 
-// Load options using StorageManager
-self.WebRTCExporterStorage.StorageManager.getOptions().then((loadedOptions) => {
+// Initialize options manager
+optionsManager.initialize().then((loadedOptions) => {
   Object.assign(options, loadedOptions)
   log('options loaded')
   optionsUpdated()
@@ -103,11 +123,9 @@ self.WebRTCExporterStorage.StorageManager.getOptions().then((loadedOptions) => {
   Object.assign(options, self.WebRTCExporterConfig.DEFAULT_OPTIONS)
 })
 
-// Listen for options changes
-self.WebRTCExporterStorage.StorageManager.onChanged((changes) => {
-  for (const [key, { newValue }] of Object.entries(changes)) {
-    options[key] = newValue
-  }
+// Listen for options changes through the manager
+optionsManager.onChange((changeInfo) => {
+  Object.assign(options, changeInfo.newOptions)
   log('options changed')
   optionsUpdated()
 })
@@ -133,71 +151,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === self.WebRTCExporterConfig.CONSTANTS.EXTENSION.ALARM_NAME) {
-    cleanupPeerConnections().catch((err) => {
+    connectionTracker.cleanupStaleConnections(options).catch((err) => {
       log(`cleanup peer connections error: ${err.message}`)
     })
   }
 })
-
-async function setPeerConnectionLastUpdate ({ id, origin }, lastUpdate = 0) {
-  let { peerConnectionsLastUpdate } = await chrome.storage.local.get(
-    'peerConnectionsLastUpdate'
-  )
-  if (!peerConnectionsLastUpdate) {
-    peerConnectionsLastUpdate = {}
-  }
-  if (lastUpdate) {
-    peerConnectionsLastUpdate[id] = { origin, lastUpdate }
-  } else {
-    delete peerConnectionsLastUpdate[id]
-  }
-  await chrome.storage.local.set({ peerConnectionsLastUpdate })
-
-  const peerConnectionsPerOrigin = {}
-  Object.values(peerConnectionsLastUpdate).forEach(({ origin: o }) => {
-    if (!peerConnectionsPerOrigin[o]) {
-      peerConnectionsPerOrigin[o] = 0
-    }
-    peerConnectionsPerOrigin[o]++
-  })
-  await chrome.storage.local.set({ peerConnectionsPerOrigin })
-  await optionsUpdated()
-}
-
-async function cleanupPeerConnections () {
-  const { peerConnectionsLastUpdate } = await chrome.storage.local.get(
-    'peerConnectionsLastUpdate'
-  )
-  if (
-    !peerConnectionsLastUpdate ||
-    !Object.keys(peerConnectionsLastUpdate).length
-  ) {
-    return
-  }
-
-  log(
-    `checking stale peer connections (${
-      Object.keys(peerConnectionsLastUpdate).length
-    } total)`
-  )
-  const now = Date.now()
-  await Promise.allSettled(
-    Object.entries(peerConnectionsLastUpdate)
-      .map(([id, { origin, lastUpdate }]) => {
-        if (
-          now - lastUpdate >
-          Math.max(2 * options.updateInterval, 30) * 1000
-        ) {
-          return { id, origin }
-        }
-      })
-      .filter((ret) => !!ret?.id)
-      .map(({ id, origin }) => {
-        log(`removing stale peer connection metrics: ${id} ${origin}`)
-        return sendData('DELETE', { id, origin })
-      })
-  )
-}
 
 // Send data to pushgateway using the new client
 async function sendData (method, { id, origin }, data) {
@@ -217,10 +175,13 @@ async function sendData (method, { id, origin }, data) {
     })
 
     // Update peer connection tracking on successful requests
-    await setPeerConnectionLastUpdate(
+    await connectionTracker.setPeerConnectionLastUpdate(
       { id, origin },
-      method === 'POST' ? Date.now() : undefined
+      method === 'POST' ? Date.now() : 0
     )
+    
+    // Trigger UI update after connection state change
+    await optionsUpdated()
 
     return result
   } catch (error) {

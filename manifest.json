@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WebRTC Stats Exporter Pro (Auto)",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Automatically captures WebRTC stats from specified platforms and pushes them to a Prometheus Pushgateway.",
   "permissions": [
     "storage",
@@ -44,7 +44,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["override.js", "shared/config.js", "shared/domains.js", "shared/storage.js", "background/stats-formatter.js", "background/pushgateway-client.js"],
+      "resources": ["override.js", "shared/config.js", "shared/domains.js", "shared/storage.js", "background/stats-formatter.js", "background/pushgateway-client.js", "background/options-manager.js", "background/connection-tracker.js"],
       "matches": ["<all_urls>"]
     }
   ],
