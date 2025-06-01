@@ -13,6 +13,7 @@ class TabMonitor {
     this.logger = logger
     this.options = {}
     this.isInitialized = false
+    this.resourceTracker = null
     this.badgeConfig = {
       enabledColor: 'rgb(63, 81, 181)',
       textEmpty: '',
@@ -40,12 +41,26 @@ class TabMonitor {
     try {
       this.options = { ...initialOptions }
 
-      // Set up tab event listeners
-      chrome.tabs.onActivated.addListener(this._handleTabActivated.bind(this))
-      chrome.tabs.onUpdated.addListener(this._handleTabUpdated.bind(this))
+      // Create resource tracker for cleanup management
+      const LifecycleManager = globalThis.WebRTCExporterLifecycleManager || self.WebRTCExporterLifecycleManager
+      if (LifecycleManager) {
+        this.resourceTracker = LifecycleManager.createResourceTracker('TabMonitor', this.logger)
+      } else {
+        this.logger?.log('Warning: LifecycleManager not available, event listeners will not be tracked for cleanup')
+      }
+
+      // Set up tab event listeners with cleanup tracking
+      if (this.resourceTracker) {
+        this.resourceTracker.registerChromeListener(chrome.tabs.onActivated, this._handleTabActivated.bind(this))
+        this.resourceTracker.registerChromeListener(chrome.tabs.onUpdated, this._handleTabUpdated.bind(this))
+      } else {
+        // Fallback to direct listener registration
+        chrome.tabs.onActivated.addListener(this._handleTabActivated.bind(this))
+        chrome.tabs.onUpdated.addListener(this._handleTabUpdated.bind(this))
+      }
 
       this.isInitialized = true
-      this.logger?.log('TabMonitor initialized successfully')
+      this.logger?.log('TabMonitor initialized successfully with resource tracking')
     } catch (error) {
       this.logger?.log(`TabMonitor initialization failed: ${error.message}`)
       throw new TabMonitorError(`Failed to initialize tab monitor: ${error.message}`)
@@ -156,16 +171,23 @@ class TabMonitor {
         return origin && this.domainManager.shouldAutoEnable(origin, this.options.enabledOrigins)
       })
 
-      return {
+      const baseStats = {
         totalTabs: tabs.length,
         httpTabs: httpTabs.length,
         targetTabs: targetTabs.length,
         enabledTabs: enabledTabs.length,
         isInitialized: this.isInitialized
       }
+
+      // Add resource tracking stats if available
+      if (this.resourceTracker) {
+        baseStats.resourceTracking = this.resourceTracker.getStats()
+      }
+
+      return baseStats
     } catch (error) {
       this.logger?.log(`Error getting tab stats: ${error.message}`)
-      return {
+      const errorStats = {
         totalTabs: 0,
         httpTabs: 0,
         targetTabs: 0,
@@ -173,6 +195,13 @@ class TabMonitor {
         isInitialized: this.isInitialized,
         error: error.message
       }
+
+      // Add resource tracking stats even in error case
+      if (this.resourceTracker) {
+        errorStats.resourceTracking = this.resourceTracker.getStats()
+      }
+
+      return errorStats
     }
   }
 
@@ -203,11 +232,18 @@ class TabMonitor {
    * Destroy the tab monitor and clean up resources
    */
   destroy () {
-    // Note: Chrome extension APIs don't provide a way to remove listeners
-    // They will be automatically cleaned up when the service worker restarts
+    if (this.resourceTracker) {
+      this.resourceTracker.destroy()
+      this.resourceTracker = null
+      this.logger?.log('TabMonitor destroyed with resource cleanup')
+    } else {
+      // Note: Chrome extension APIs don't provide a way to remove listeners
+      // They will be automatically cleaned up when the service worker restarts
+      this.logger?.log('TabMonitor destroyed (no resource tracker available)')
+    }
+    
     this.isInitialized = false
     this.options = {}
-    this.logger?.log('TabMonitor destroyed')
   }
 
   // Private methods

@@ -8,16 +8,60 @@
  * Provides consistent interface for Chrome extension storage with error handling
  */
 class StorageManager {
+  constructor () {
+    this.circuitBreaker = null
+    this.fallbackManager = null
+    this.logger = null
+    this._initializeCircuitBreaker()
+  }
+
+  /**
+   * Initialize circuit breaker and fallback manager
+   * @private
+   */
+  _initializeCircuitBreaker () {
+    try {
+      const CircuitBreakerModule = globalThis.WebRTCExporterStorageCircuitBreaker || 
+                                   self.WebRTCExporterStorageCircuitBreaker ||
+                                   window.WebRTCExporterStorageCircuitBreaker
+      
+      if (CircuitBreakerModule) {
+        this.circuitBreaker = new CircuitBreakerModule.StorageCircuitBreaker(5, 60000)
+        this.fallbackManager = new CircuitBreakerModule.StorageFallbackManager()
+        
+        if (this.logger) {
+          this.circuitBreaker.setLogger(this.logger)
+          this.fallbackManager.setLogger(this.logger)
+        }
+      }
+    } catch (error) {
+      console.warn('[StorageManager] Circuit breaker not available:', error.message)
+    }
+  }
+
+  /**
+   * Set logger for debugging
+   * @param {Object} logger - Logger instance with log method
+   */
+  setLogger (logger) {
+    this.logger = logger
+    if (this.circuitBreaker) {
+      this.circuitBreaker.setLogger(logger)
+    }
+    if (this.fallbackManager) {
+      this.fallbackManager.setLogger(logger)
+    }
+  }
   /**
    * Get data from chrome.storage.sync with error handling
    * @param {string|string[]|Object} keys - Keys to retrieve
    * @returns {Promise<Object>} Retrieved data
    */
-  static async get (keys = null) {
-    try {
+  async get (keys = null) {
+    const operation = async () => {
       if (typeof chrome === 'undefined' || !chrome.storage) {
         console.warn('[StorageManager] Chrome storage not available, using fallback')
-        return StorageManager._getFallback(keys)
+        return this._getFallback(keys)
       }
 
       const result = await chrome.storage.sync.get(keys)
@@ -36,8 +80,28 @@ class StorageManager {
       }
 
       return result
+    }
+
+    try {
+      if (this.circuitBreaker) {
+        return await this.circuitBreaker.executeWithRetry(operation)
+      } else {
+        return await operation()
+      }
     } catch (error) {
       console.error('[StorageManager] Error getting data from storage:', error)
+      
+      // Try fallback storage if available
+      if (this.fallbackManager) {
+        try {
+          const fallbackData = await this.fallbackManager.getFallback(keys)
+          console.warn('[StorageManager] Using fallback data due to storage error')
+          return fallbackData
+        } catch (fallbackError) {
+          console.error('[StorageManager] Fallback also failed:', fallbackError.message)
+        }
+      }
+      
       throw new StorageError('Failed to retrieve data from storage', error)
     }
   }
@@ -47,8 +111,8 @@ class StorageManager {
    * @param {Object} data - Data to store
    * @returns {Promise<void>}
    */
-  static async set (data) {
-    try {
+  async set (data) {
+    const operation = async () => {
       if (!data || typeof data !== 'object') {
         throw new Error('Data must be a non-null object')
       }
@@ -64,13 +128,42 @@ class StorageManager {
 
       if (typeof chrome === 'undefined' || !chrome.storage) {
         console.warn('[StorageManager] Chrome storage not available, using fallback')
-        return StorageManager._setFallback(data)
+        return this._setFallback(data)
       }
 
       await chrome.storage.sync.set(data)
       console.log('[StorageManager] Successfully saved configuration')
+    }
+
+    try {
+      if (this.circuitBreaker) {
+        await this.circuitBreaker.executeWithRetry(operation)
+      } else {
+        await operation()
+      }
+      
+      // Also save to fallback for redundancy
+      if (this.fallbackManager) {
+        try {
+          await this.fallbackManager.setFallback(data)
+        } catch (fallbackError) {
+          console.warn('[StorageManager] Fallback save failed:', fallbackError.message)
+        }
+      }
     } catch (error) {
       console.error('[StorageManager] Error setting data to storage:', error)
+      
+      // Try to save to fallback only if primary storage failed
+      if (this.fallbackManager) {
+        try {
+          await this.fallbackManager.setFallback(data)
+          console.warn('[StorageManager] Data saved to fallback storage only')
+          return // Success via fallback
+        } catch (fallbackError) {
+          console.error('[StorageManager] Fallback save also failed:', fallbackError.message)
+        }
+      }
+      
       throw new StorageError('Failed to save data to storage', error)
     }
   }
@@ -80,14 +173,22 @@ class StorageManager {
    * @param {string|string[]|Object} keys - Keys to retrieve
    * @returns {Promise<Object>} Retrieved data
    */
-  static async getLocal (keys = null) {
-    try {
+  async getLocal (keys = null) {
+    const operation = async () => {
       if (typeof chrome === 'undefined' || !chrome.storage) {
         console.warn('[StorageManager] Chrome storage not available, using fallback')
         return {}
       }
 
       return await chrome.storage.local.get(keys)
+    }
+
+    try {
+      if (this.circuitBreaker) {
+        return await this.circuitBreaker.executeWithRetry(operation)
+      } else {
+        return await operation()
+      }
     } catch (error) {
       console.error('[StorageManager] Error getting local data:', error)
       throw new StorageError('Failed to retrieve local data', error)
@@ -99,8 +200,8 @@ class StorageManager {
    * @param {Object} data - Data to store
    * @returns {Promise<void>}
    */
-  static async setLocal (data) {
-    try {
+  async setLocal (data) {
+    const operation = async () => {
       if (!data || typeof data !== 'object') {
         throw new Error('Data must be a non-null object')
       }
@@ -111,6 +212,14 @@ class StorageManager {
       }
 
       await chrome.storage.local.set(data)
+    }
+
+    try {
+      if (this.circuitBreaker) {
+        await this.circuitBreaker.executeWithRetry(operation)
+      } else {
+        await operation()
+      }
     } catch (error) {
       console.error('[StorageManager] Error setting local data:', error)
       throw new StorageError('Failed to save local data', error)
@@ -122,13 +231,21 @@ class StorageManager {
    * @param {string|string[]} keys - Keys to remove
    * @returns {Promise<void>}
    */
-  static async remove (keys) {
-    try {
+  async remove (keys) {
+    const operation = async () => {
       if (typeof chrome === 'undefined' || !chrome.storage) {
         return
       }
 
       await chrome.storage.sync.remove(keys)
+    }
+
+    try {
+      if (this.circuitBreaker) {
+        await this.circuitBreaker.executeWithRetry(operation)
+      } else {
+        await operation()
+      }
     } catch (error) {
       console.error('[StorageManager] Error removing data:', error)
       throw new StorageError('Failed to remove data from storage', error)
@@ -139,14 +256,27 @@ class StorageManager {
    * Clear all storage data
    * @returns {Promise<void>}
    */
-  static async clear () {
-    try {
+  async clear () {
+    const operation = async () => {
       if (typeof chrome === 'undefined' || !chrome.storage) {
         return
       }
 
       await chrome.storage.sync.clear()
       await chrome.storage.local.clear()
+    }
+
+    try {
+      if (this.circuitBreaker) {
+        await this.circuitBreaker.executeWithRetry(operation)
+      } else {
+        await operation()
+      }
+      
+      // Also clear fallback storage
+      if (this.fallbackManager) {
+        this.fallbackManager.clearFallback()
+      }
     } catch (error) {
       console.error('[StorageManager] Error clearing storage:', error)
       throw new StorageError('Failed to clear storage', error)
@@ -157,12 +287,12 @@ class StorageManager {
    * Get merged options (defaults + stored)
    * @returns {Promise<Object>} Complete options object
    */
-  static async getOptions () {
+  async getOptions () {
     try {
       const config = globalThis.WebRTCExporterConfig || self.WebRTCExporterConfig || window.WebRTCExporterConfig
       const defaultOptions = config ? config.DEFAULT_OPTIONS : {}
 
-      const stored = await StorageManager.get()
+      const stored = await this.get()
       const options = { ...defaultOptions, ...stored }
 
       // Ensure enabledStats is always an array
@@ -183,11 +313,11 @@ class StorageManager {
    * @param {Object} updates - Options to update
    * @returns {Promise<Object>} Updated complete options
    */
-  static async updateOptions (updates) {
+  async updateOptions (updates) {
     try {
-      const current = await StorageManager.getOptions()
+      const current = await this.getOptions()
       const updated = { ...current, ...updates }
-      await StorageManager.set(updated)
+      await this.set(updated)
       return updated
     } catch (error) {
       console.error('[StorageManager] Error updating options:', error)
@@ -199,7 +329,7 @@ class StorageManager {
    * Get statistics data
    * @returns {Promise<Object>} Statistics object
    */
-  static async getStats () {
+  async getStats () {
     try {
       const config = globalThis.WebRTCExporterConfig || self.WebRTCExporterConfig || window.WebRTCExporterConfig
       const storageKeys = config ? config.CONSTANTS.STORAGE_KEYS : {}
@@ -212,7 +342,7 @@ class StorageManager {
         storageKeys.ERRORS
       ].filter(Boolean)
 
-      return await StorageManager.getLocal(keys)
+      return await this.getLocal(keys)
     } catch (error) {
       console.error('[StorageManager] Error getting stats:', error)
       return {}
@@ -224,9 +354,9 @@ class StorageManager {
    * @param {Object} stats - Statistics to update
    * @returns {Promise<void>}
    */
-  static async updateStats (stats) {
+  async updateStats (stats) {
     try {
-      await StorageManager.setLocal(stats)
+      await this.setLocal(stats)
     } catch (error) {
       console.error('[StorageManager] Error updating stats:', error)
       // Don't throw for stats errors to avoid breaking main functionality
@@ -238,7 +368,7 @@ class StorageManager {
    * @param {Function} callback - Callback function for changes
    * @returns {Function} Unsubscribe function
    */
-  static onChanged (callback) {
+  onChanged (callback) {
     if (typeof chrome === 'undefined' || !chrome.storage) {
       return () => {} // Return empty unsubscribe function
     }
@@ -257,8 +387,29 @@ class StorageManager {
     }
   }
 
+  /**
+   * Get circuit breaker and storage health statistics
+   * @returns {Object} Storage health statistics
+   */
+  getHealthStats () {
+    const stats = {
+      circuitBreakerAvailable: !!this.circuitBreaker,
+      fallbackManagerAvailable: !!this.fallbackManager
+    }
+
+    if (this.circuitBreaker) {
+      stats.circuitBreaker = this.circuitBreaker.getStats()
+    }
+
+    if (this.fallbackManager) {
+      stats.fallback = this.fallbackManager.getStats()
+    }
+
+    return stats
+  }
+
   // Fallback methods for testing/development
-  static _getFallback (keys) {
+  _getFallback (keys) {
     if (typeof localStorage === 'undefined') return {}
 
     try {
@@ -281,7 +432,7 @@ class StorageManager {
     }
   }
 
-  static _setFallback (data) {
+  _setFallback (data) {
     if (typeof localStorage === 'undefined') return
 
     try {
@@ -305,20 +456,42 @@ class StorageError extends Error {
   }
 }
 
+/**
+ * Create a configured StorageManager instance
+ * @param {Object} logger - Logger instance (optional)
+ * @returns {StorageManager} Configured storage manager
+ */
+function createStorageManager (logger = null) {
+  const manager = new StorageManager()
+  if (logger) {
+    manager.setLogger(logger)
+  }
+  return manager
+}
+
+// Create default instance for backward compatibility
+const defaultStorageManager = createStorageManager()
+
 // Global export for Chrome extension compatibility
 if (typeof globalThis !== 'undefined') {
   globalThis.WebRTCExporterStorage = {
-    StorageManager,
-    StorageError
+    StorageManager: defaultStorageManager, // Export instance for backward compatibility
+    StorageManagerClass: StorageManager,   // Export class for new instances
+    StorageError,
+    createStorageManager
   }
 } else if (typeof window !== 'undefined') {
   window.WebRTCExporterStorage = {
-    StorageManager,
-    StorageError
+    StorageManager: defaultStorageManager,
+    StorageManagerClass: StorageManager,
+    StorageError,
+    createStorageManager
   }
 } else if (typeof self !== 'undefined') {
   self.WebRTCExporterStorage = {
-    StorageManager,
-    StorageError
+    StorageManager: defaultStorageManager,
+    StorageManagerClass: StorageManager,
+    StorageError,
+    createStorageManager
   }
 }

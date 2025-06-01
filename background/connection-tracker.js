@@ -239,7 +239,7 @@ class ConnectionTracker {
       const oldConnections = Object.entries(stats.connections)
         .filter(([_, { lastUpdate }]) => now - lastUpdate > 300000) // 5 minutes
       
-      return {
+      const healthStatus = {
         isHealthy: oldConnections.length === 0,
         totalConnections: stats.totalConnections,
         oldConnectionCount: oldConnections.length,
@@ -248,6 +248,13 @@ class ConnectionTracker {
           : 0,
         originCounts: stats.originCounts
       }
+
+      // Add storage health information if available
+      if (this.storageManager && typeof this.storageManager.getHealthStats === 'function') {
+        healthStatus.storageHealth = this.storageManager.getHealthStats()
+      }
+
+      return healthStatus
     } catch (error) {
       return {
         isHealthy: false,

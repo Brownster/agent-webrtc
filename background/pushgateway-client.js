@@ -10,6 +10,15 @@ class PushgatewayClient {
   constructor () {
     this.requestCount = 0
     this.lastRequestTime = 0
+    this.networkCircuitBreaker = null
+  }
+
+  /**
+   * Set network circuit breaker for enhanced reliability
+   * @param {Object} circuitBreaker - Network circuit breaker instance
+   */
+  setNetworkCircuitBreaker (circuitBreaker) {
+    this.networkCircuitBreaker = circuitBreaker
   }
 
   /**
@@ -27,6 +36,51 @@ class PushgatewayClient {
    * @returns {Promise<string>} Response text
    */
   async sendData ({
+    method,
+    url,
+    job,
+    id,
+    username,
+    password,
+    gzip = false,
+    data,
+    statsCallback
+  }) {
+    // If network circuit breaker is available, use it
+    if (this.networkCircuitBreaker) {
+      return this.networkCircuitBreaker.sendWithCircuitBreaker({
+        method,
+        url,
+        job,
+        id,
+        username,
+        password,
+        gzip,
+        data,
+        statsCallback
+      })
+    }
+
+    // Otherwise, use direct sending
+    return this._sendDataDirect({
+      method,
+      url,
+      job,
+      id,
+      username,
+      password,
+      gzip,
+      data,
+      statsCallback
+    })
+  }
+
+  /**
+   * Send data directly to Pushgateway (used by circuit breaker or when no circuit breaker is set)
+   * @param {Object} params - Request parameters
+   * @returns {Promise<string>} Response text
+   */
+  async _sendDataDirect ({
     method,
     url,
     job,
@@ -118,11 +172,19 @@ class PushgatewayClient {
    * @returns {Object} Client statistics
    */
   getStats () {
-    return {
+    const stats = {
       requestCount: this.requestCount,
       lastRequestTime: this.lastRequestTime,
-      uptime: Date.now() - (this.lastRequestTime || Date.now())
+      uptime: Date.now() - (this.lastRequestTime || Date.now()),
+      hasNetworkCircuitBreaker: !!this.networkCircuitBreaker
     }
+
+    // Add network circuit breaker stats if available
+    if (this.networkCircuitBreaker) {
+      stats.networkCircuitBreaker = this.networkCircuitBreaker.getStats()
+    }
+
+    return stats
   }
 
   /**

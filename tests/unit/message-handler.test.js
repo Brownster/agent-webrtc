@@ -92,7 +92,7 @@ describe('MessageHandler', () => {
       expect(handler.isInitialized).toBe(true)
       expect(handler.options).toEqual(options)
       expect(handler.messageHandlers.has('peer-connection-stats')).toBe(true)
-      expect(mockLogger.log).toHaveBeenCalledWith('MessageHandler initialized successfully')
+      expect(mockLogger.log).toHaveBeenCalledWith('MessageHandler initialized successfully with resource tracking')
     })
 
     test('should not initialize twice', async () => {
@@ -427,7 +427,7 @@ describe('MessageHandler', () => {
       expect(handler.isInitialized).toBe(false)
       expect(handler.options).toEqual({})
       expect(handler.messageListener).toBeNull()
-      expect(mockLogger.log).toHaveBeenCalledWith('MessageHandler destroyed')
+      expect(mockLogger.log).toHaveBeenCalledWith('MessageHandler destroyed (no resource tracker available)')
     })
   })
 

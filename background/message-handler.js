@@ -15,6 +15,7 @@ class MessageHandler {
     this.messageHandlers = new Map()
     this.isInitialized = false
     this.messageListener = null
+    this.resourceTracker = null
   }
 
   /**
@@ -31,17 +32,30 @@ class MessageHandler {
     try {
       this.options = { ...initialOptions }
 
+      // Create resource tracker for cleanup management
+      const LifecycleManager = globalThis.WebRTCExporterLifecycleManager || self.WebRTCExporterLifecycleManager
+      if (LifecycleManager) {
+        this.resourceTracker = LifecycleManager.createResourceTracker('MessageHandler', this.logger)
+      } else {
+        this.logger?.log('Warning: LifecycleManager not available, message listeners will not be tracked for cleanup')
+      }
+
       // Set up default message handlers
       this._registerDefaultHandlers()
 
       // Create bound message listener
       this.messageListener = this._handleMessage.bind(this)
 
-      // Set up Chrome message listener
-      chrome.runtime.onMessage.addListener(this.messageListener)
+      // Set up Chrome message listener with cleanup tracking
+      if (this.resourceTracker) {
+        this.resourceTracker.registerChromeListener(chrome.runtime.onMessage, this.messageListener)
+      } else {
+        // Fallback to direct listener registration
+        chrome.runtime.onMessage.addListener(this.messageListener)
+      }
 
       this.isInitialized = true
-      this.logger?.log('MessageHandler initialized successfully')
+      this.logger?.log('MessageHandler initialized successfully with resource tracking')
     } catch (error) {
       this.logger?.log(`MessageHandler initialization failed: ${error.message}`)
       throw new MessageHandlerError(`Failed to initialize message handler: ${error.message}`)
@@ -181,13 +195,20 @@ class MessageHandler {
    * Destroy the message handler and clean up resources
    */
   destroy () {
-    // Note: Chrome extension APIs don't provide a way to remove the listener
-    // It will be automatically cleaned up when the service worker restarts
+    if (this.resourceTracker) {
+      this.resourceTracker.destroy()
+      this.resourceTracker = null
+      this.logger?.log('MessageHandler destroyed with resource cleanup')
+    } else {
+      // Note: Chrome extension APIs don't provide a way to remove the listener
+      // It will be automatically cleaned up when the service worker restarts
+      this.logger?.log('MessageHandler destroyed (no resource tracker available)')
+    }
+    
     this.messageHandlers.clear()
     this.isInitialized = false
     this.options = {}
     this.messageListener = null
-    this.logger?.log('MessageHandler destroyed')
   }
 
   // Private methods

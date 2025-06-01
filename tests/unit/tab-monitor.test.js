@@ -121,7 +121,7 @@ describe('TabMonitor', () => {
       expect(mockChrome.tabs.onUpdated.addListener).toHaveBeenCalledWith(expect.any(Function))
       expect(monitor.isInitialized).toBe(true)
       expect(monitor.options).toEqual(options)
-      expect(mockLogger.log).toHaveBeenCalledWith('TabMonitor initialized successfully')
+      expect(mockLogger.log).toHaveBeenCalledWith('TabMonitor initialized successfully with resource tracking')
     })
 
     test('should not initialize twice', async () => {
@@ -494,7 +494,7 @@ describe('TabMonitor', () => {
 
       expect(monitor.isInitialized).toBe(false)
       expect(monitor.options).toEqual({})
-      expect(mockLogger.log).toHaveBeenCalledWith('TabMonitor destroyed')
+      expect(mockLogger.log).toHaveBeenCalledWith('TabMonitor destroyed (no resource tracker available)')
     })
   })
 

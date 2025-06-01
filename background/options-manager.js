@@ -150,13 +150,20 @@ class OptionsManager {
    * @returns {Object} Statistics about options management
    */
   getStats () {
-    return {
+    const stats = {
       isLoaded: this.isLoaded,
       optionCount: Object.keys(this.options).length,
       changeListenerCount: this.changeListeners.size,
       loadListenerCount: this.loadListeners.size,
       hasStorageListener: !!this.storageUnsubscribe
     }
+
+    // Add storage health information if available
+    if (this.storageManager && typeof this.storageManager.getHealthStats === 'function') {
+      stats.storageHealth = this.storageManager.getHealthStats()
+    }
+
+    return stats
   }
 
   /**

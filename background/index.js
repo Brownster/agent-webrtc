@@ -9,9 +9,12 @@
 importScripts('../assets/pako.min.js')
 importScripts('../shared/config.js')
 importScripts('../shared/domains.js')
+importScripts('../shared/storage-circuit-breaker.js')
 importScripts('../shared/storage.js')
+importScripts('../shared/lifecycle-manager.js')
 importScripts('stats-formatter.js')
 importScripts('pushgateway-client.js')
+importScripts('network-circuit-breaker.js')
 importScripts('options-manager.js')
 importScripts('connection-tracker.js')
 importScripts('lifecycle-manager.js')
@@ -148,6 +151,17 @@ class WebRTCExporterApp {
       }
     }
 
+    // Destroy global resource tracker to clean up any remaining resources
+    try {
+      const LifecycleManager = globalThis.WebRTCExporterLifecycleManager || self.WebRTCExporterLifecycleManager
+      if (LifecycleManager) {
+        LifecycleManager.destroyGlobalTracker()
+        this.log('Global resource tracker destroyed')
+      }
+    } catch (error) {
+      this.log(`Error destroying global resource tracker: ${error.message}`)
+    }
+
     this.modules = {}
     this.options = {}
     this.isInitialized = false
@@ -164,6 +178,26 @@ class WebRTCExporterApp {
     // Initialize pushgateway client
     this.modules.pushgatewayClient = new self.WebRTCExporterPushgateway.PushgatewayClient()
     this.modules.statsCallback = self.WebRTCExporterPushgateway.createStatsCallback(chrome.storage)
+
+    // Initialize network circuit breaker for enhanced reliability
+    if (self.WebRTCExporterNetworkCircuitBreaker) {
+      this.modules.networkCircuitBreaker = self.WebRTCExporterNetworkCircuitBreaker.createNetworkCircuitBreaker(
+        this.modules.pushgatewayClient,
+        {
+          failureThreshold: 5,
+          resetTimeout: 60000, // 1 minute
+          maxQueueSize: 100,
+          healthCheckInterval: 30000 // 30 seconds
+        },
+        this.logger
+      )
+      
+      // Connect circuit breaker to pushgateway client
+      this.modules.pushgatewayClient.setNetworkCircuitBreaker(this.modules.networkCircuitBreaker)
+      this.log('Network circuit breaker initialized and connected to pushgateway client')
+    } else {
+      this.log('Warning: Network circuit breaker not available')
+    }
 
     // Initialize options manager
     this.modules.optionsManager = self.WebRTCExporterOptionsManager.createOptionsManager({
