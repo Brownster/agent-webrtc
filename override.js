@@ -1,99 +1,99 @@
 class WebrtcInternalsExporter {
-  peerConnections = new Map();
+  peerConnections = new Map()
 
-  url = "";
-  enabled = false;
-  updateInterval = 2000;
-  enabledStats = [];
+  url = ''
+  enabled = false
+  updateInterval = 2000
+  enabledStats = []
 
-  constructor() {
-    window.addEventListener("message", async (message) => {
-      const { event, options } = message.data;
-      if (event === "webrtc-internal-exporter:options") {
-        WebrtcInternalsExporter.log("Options received:", options);
-        Object.assign(this, options);
+  constructor () {
+    window.addEventListener('message', async (message) => {
+      const { event, options } = message.data
+      if (event === 'webrtc-internal-exporter:options') {
+        WebrtcInternalsExporter.log('Options received:', options)
+        Object.assign(this, options)
       }
-    });
+    })
 
-    WebrtcInternalsExporter.log("WebrtcInternalsExporter initialized, posting ready event");
-    window.postMessage({ event: "webrtc-internal-exporter:ready" });
+    WebrtcInternalsExporter.log('WebrtcInternalsExporter initialized, posting ready event')
+    window.postMessage({ event: 'webrtc-internal-exporter:ready' })
   }
 
-  static log(...args) {
+  static log (...args) {
     // Always log RTCPeerConnection creation for debugging
-    console.log.apply(null, ["[webrtc-internal-exporter:override]", ...args]);
+    console.log.apply(null, ['[webrtc-internal-exporter:override]', ...args])
   }
 
-  static randomId() {
-    if ("randomUUID" in window.crypto) {
-      return window.crypto.randomUUID();
+  static randomId () {
+    if ('randomUUID' in window.crypto) {
+      return window.crypto.randomUUID()
     } else {
-      return (2 ** 64 * Math.random()).toString(16);
+      return (2 ** 64 * Math.random()).toString(16)
     }
   }
 
-  add(pc) {
-    const id = WebrtcInternalsExporter.randomId();
-    WebrtcInternalsExporter.log(`Adding RTCPeerConnection with ID: ${id}, enabled: ${this.enabled}, url: ${this.url}`);
-    this.peerConnections.set(id, pc);
-    pc.addEventListener("connectionstatechange", () => {
-      WebrtcInternalsExporter.log(`Connection state changed for ${id}: ${pc.connectionState}`);
-      if (pc.connectionState === "closed") {
-        this.peerConnections.delete(id);
+  add (pc) {
+    const id = WebrtcInternalsExporter.randomId()
+    WebrtcInternalsExporter.log(`Adding RTCPeerConnection with ID: ${id}, enabled: ${this.enabled}, url: ${this.url}`)
+    this.peerConnections.set(id, pc)
+    pc.addEventListener('connectionstatechange', () => {
+      WebrtcInternalsExporter.log(`Connection state changed for ${id}: ${pc.connectionState}`)
+      if (pc.connectionState === 'closed') {
+        this.peerConnections.delete(id)
       }
-    });
-    this.collectStats(id);
+    })
+    this.collectStats(id)
   }
 
-  async collectStats(id) {
-    const pc = this.peerConnections.get(id);
-    if (!pc) return;
+  async collectStats (id) {
+    const pc = this.peerConnections.get(id)
+    if (!pc) return
 
-    WebrtcInternalsExporter.log(`collectStats for ${id}: enabled=${this.enabled}, url=${this.url}, enabledStats=${JSON.stringify(this.enabledStats)}`);
+    WebrtcInternalsExporter.log(`collectStats for ${id}: enabled=${this.enabled}, url=${this.url}, enabledStats=${JSON.stringify(this.enabledStats)}`)
 
     if (this.url && this.enabled) {
       try {
-        const stats = await pc.getStats();
-        const allStats = [...stats.values()];
+        const stats = await pc.getStats()
+        const allStats = [...stats.values()]
         const values = allStats.filter(
           (v) =>
-            ["peer-connection", ...this.enabledStats].indexOf(v.type) !== -1,
-        );
-        WebrtcInternalsExporter.log(`Collected ${allStats.length} total stats, filtered to ${values.length} matching types`);
+            ['peer-connection', ...this.enabledStats].indexOf(v.type) !== -1
+        )
+        WebrtcInternalsExporter.log(`Collected ${allStats.length} total stats, filtered to ${values.length} matching types`)
         window.postMessage(
           {
-            event: "webrtc-internal-exporter:peer-connection-stats",
+            event: 'webrtc-internal-exporter:peer-connection-stats',
             url: window.location.href,
             id,
             state: pc.connectionState,
-            values,
+            values
           },
-          [values],
-        );
+          [values]
+        )
       } catch (error) {
-        WebrtcInternalsExporter.log(`collectStats error: ${error.message}`);
+        WebrtcInternalsExporter.log(`collectStats error: ${error.message}`)
       }
     }
 
-    if (pc.connectionState === "closed") {
-      this.peerConnections.delete(id);
+    if (pc.connectionState === 'closed') {
+      this.peerConnections.delete(id)
     } else {
-      setTimeout(this.collectStats.bind(this), this.updateInterval, id);
+      setTimeout(this.collectStats.bind(this), this.updateInterval, id)
     }
   }
 }
 
-console.log("[webrtc-internal-exporter:override] Override script loaded, hooking RTCPeerConnection");
-const webrtcInternalsExporter = new WebrtcInternalsExporter();
+console.log('[webrtc-internal-exporter:override] Override script loaded, hooking RTCPeerConnection')
+const webrtcInternalsExporter = new WebrtcInternalsExporter()
 
 window.RTCPeerConnection = new Proxy(window.RTCPeerConnection, {
-  construct(target, argumentsList) {
-    WebrtcInternalsExporter.log(`RTCPeerConnection`, argumentsList);
+  construct (target, argumentsList) {
+    WebrtcInternalsExporter.log('RTCPeerConnection', argumentsList)
 
-    const pc = new target(...argumentsList);
+    const pc = new target(...argumentsList)
 
-    webrtcInternalsExporter.add(pc);
+    webrtcInternalsExporter.add(pc)
 
-    return pc;
-  },
-});
+    return pc
+  }
+})

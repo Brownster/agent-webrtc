@@ -30,6 +30,9 @@ jobs:
           npm install
         fi
       
+    - name: Run linting
+      run: npm run lint:check || echo "Linting issues found, but not failing build for now"
+      
     - name: Run tests
       run: npm test
       
