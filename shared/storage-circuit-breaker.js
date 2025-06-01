@@ -115,7 +115,7 @@ class StorageCircuitBreaker {
    * @private
    */
   shouldAttemptReset () {
-    return this.lastFailureTime && 
+    return this.lastFailureTime &&
            (Date.now() - this.lastFailureTime) >= this.resetTimeout
   }
 
@@ -169,7 +169,7 @@ class StorageCircuitBreaker {
    */
   isNonRetryableError (error) {
     const message = error.message.toLowerCase()
-    
+
     // These are permanent errors that won't be fixed by retrying
     return message.includes('quota_exceeded') ||
            message.includes('invalid data') ||
@@ -199,8 +199,9 @@ class StorageCircuitBreaker {
       successCount: this.successCount,
       lastFailureTime: this.lastFailureTime,
       resetTimeout: this.resetTimeout,
-      timeUntilReset: this.lastFailureTime ? 
-        Math.max(0, this.resetTimeout - (Date.now() - this.lastFailureTime)) : 0
+      timeUntilReset: this.lastFailureTime
+        ? Math.max(0, this.resetTimeout - (Date.now() - this.lastFailureTime))
+        : 0
     }
   }
 
@@ -342,7 +343,7 @@ class StorageFallbackManager {
    */
   clearFallback () {
     this.memoryCache.clear()
-    
+
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem('webrtc-exporter-fallback')

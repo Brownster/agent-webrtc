@@ -52,12 +52,12 @@ class ResourceTracker {
 
     try {
       target.addEventListener(event, handler, options)
-      
+
       const key = { target, event, handler, options }
       this.eventListeners.set(key, { target, event, handler, options })
-      
+
       this.log(`Registered event listener: ${event}`)
-      
+
       // Return cleanup function
       return () => {
         this.removeEventListener(key)
@@ -82,18 +82,18 @@ class ResourceTracker {
 
     try {
       chromeEvent.addListener(handler)
-      
+
       const key = { chromeEvent, handler }
       this.chromeListeners.set(key, { chromeEvent, handler })
-      
+
       this.log(`Registered Chrome listener for ${chromeEvent.constructor.name || 'unknown event'}`)
-      
+
       // Return cleanup function
       return () => {
         this.removeChromeListener(key)
       }
     } catch (error) {
-      this.log(`Error registering Chrome listener:`, error.message)
+      this.log('Error registering Chrome listener:', error.message)
       return () => {}
     }
   }
@@ -116,13 +116,13 @@ class ResourceTracker {
         this.timers.delete(timerId)
         callback()
       }, delay)
-      
+
       this.timers.add(timerId)
       this.log(`Registered timeout: ${timerId} (${delay}ms)`)
-      
+
       return timerId
     } catch (error) {
-      this.log(`Error registering timeout:`, error.message)
+      this.log('Error registering timeout:', error.message)
       return 0
     }
   }
@@ -141,13 +141,13 @@ class ResourceTracker {
 
     try {
       const intervalId = setInterval(callback, delay)
-      
+
       this.intervals.add(intervalId)
       this.log(`Registered interval: ${intervalId} (${delay}ms)`)
-      
+
       return intervalId
     } catch (error) {
-      this.log(`Error registering interval:`, error.message)
+      this.log('Error registering interval:', error.message)
       return 0
     }
   }
@@ -165,7 +165,7 @@ class ResourceTracker {
         this.log(`Removed event listener: ${listener.event}`)
       }
     } catch (error) {
-      this.log(`Error removing event listener:`, error.message)
+      this.log('Error removing event listener:', error.message)
     }
   }
 
@@ -180,10 +180,10 @@ class ResourceTracker {
         // Chrome API listeners don't provide removeListener, so we track for logging only
         // The service worker restart will clean them up automatically
         this.chromeListeners.delete(key)
-        this.log(`Marked Chrome listener for cleanup`)
+        this.log('Marked Chrome listener for cleanup')
       }
     } catch (error) {
-      this.log(`Error removing Chrome listener:`, error.message)
+      this.log('Error removing Chrome listener:', error.message)
     }
   }
 
@@ -248,7 +248,7 @@ class ResourceTracker {
 
     // Clean up event listeners
     let cleaned = 0
-    for (const [key, listener] of this.eventListeners) {
+    for (const [, listener] of this.eventListeners) {
       try {
         listener.target.removeEventListener(listener.event, listener.handler, listener.options)
         cleaned++

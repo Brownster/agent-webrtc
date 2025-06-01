@@ -21,14 +21,14 @@ class StorageManager {
    */
   _initializeCircuitBreaker () {
     try {
-      const CircuitBreakerModule = globalThis.WebRTCExporterStorageCircuitBreaker || 
+      const CircuitBreakerModule = globalThis.WebRTCExporterStorageCircuitBreaker ||
                                    self.WebRTCExporterStorageCircuitBreaker ||
                                    window.WebRTCExporterStorageCircuitBreaker
-      
+
       if (CircuitBreakerModule) {
         this.circuitBreaker = new CircuitBreakerModule.StorageCircuitBreaker(5, 60000)
         this.fallbackManager = new CircuitBreakerModule.StorageFallbackManager()
-        
+
         if (this.logger) {
           this.circuitBreaker.setLogger(this.logger)
           this.fallbackManager.setLogger(this.logger)
@@ -52,6 +52,7 @@ class StorageManager {
       this.fallbackManager.setLogger(logger)
     }
   }
+
   /**
    * Get data from chrome.storage.sync with error handling
    * @param {string|string[]|Object} keys - Keys to retrieve
@@ -90,7 +91,7 @@ class StorageManager {
       }
     } catch (error) {
       console.error('[StorageManager] Error getting data from storage:', error)
-      
+
       // Try fallback storage if available
       if (this.fallbackManager) {
         try {
@@ -101,7 +102,7 @@ class StorageManager {
           console.error('[StorageManager] Fallback also failed:', fallbackError.message)
         }
       }
-      
+
       throw new StorageError('Failed to retrieve data from storage', error)
     }
   }
@@ -141,7 +142,7 @@ class StorageManager {
       } else {
         await operation()
       }
-      
+
       // Also save to fallback for redundancy
       if (this.fallbackManager) {
         try {
@@ -152,7 +153,7 @@ class StorageManager {
       }
     } catch (error) {
       console.error('[StorageManager] Error setting data to storage:', error)
-      
+
       // Try to save to fallback only if primary storage failed
       if (this.fallbackManager) {
         try {
@@ -163,7 +164,7 @@ class StorageManager {
           console.error('[StorageManager] Fallback save also failed:', fallbackError.message)
         }
       }
-      
+
       throw new StorageError('Failed to save data to storage', error)
     }
   }
@@ -272,7 +273,7 @@ class StorageManager {
       } else {
         await operation()
       }
-      
+
       // Also clear fallback storage
       if (this.fallbackManager) {
         this.fallbackManager.clearFallback()
@@ -476,7 +477,7 @@ const defaultStorageManager = createStorageManager()
 if (typeof globalThis !== 'undefined') {
   globalThis.WebRTCExporterStorage = {
     StorageManager: defaultStorageManager, // Export instance for backward compatibility
-    StorageManagerClass: StorageManager,   // Export class for new instances
+    StorageManagerClass: StorageManager, // Export class for new instances
     StorageError,
     createStorageManager
   }
