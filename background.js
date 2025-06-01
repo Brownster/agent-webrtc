@@ -6,6 +6,7 @@ importScripts('shared/config.js')
 importScripts('shared/domains.js')
 importScripts('shared/storage.js')
 importScripts('background/stats-formatter.js')
+importScripts('background/pushgateway-client.js')
 
 // Use direct references to avoid variable declarations that might conflict
 // These reference the global objects set by the shared modules
@@ -17,6 +18,10 @@ function log (...args) {
 log('loaded')
 
 const options = {}
+
+// Initialize Pushgateway client and stats callback
+const pushgatewayClient = new self.WebRTCExporterPushgateway.PushgatewayClient()
+const statsCallback = self.WebRTCExporterPushgateway.createStatsCallback(chrome.storage)
 
 // Handle install/update.
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
@@ -194,59 +199,35 @@ async function cleanupPeerConnections () {
   )
 }
 
-// Send data to pushgateway.
+// Send data to pushgateway using the new client
 async function sendData (method, { id, origin }, data) {
   const { url, username, password, gzip, job } = options
-  const headers = {
-    'Content-Type': 'application/x-www-form-urlencoded'
-  }
-  if (username && password) {
-    headers.Authorization = 'Basic ' + btoa(`${username}:${password}`)
-  }
-  if (data && gzip) {
-    headers['Content-Encoding'] = 'gzip'
-    data = await pako.gzip(data)
-  }
-  /* console.log(
-    `[webrtc-internals-exporter] sendData: ${data.length} bytes (gzip: ${gzip}) url: ${url} job: ${job}`,
-  ); */
-  const start = Date.now()
-  const response = await fetch(
-    `${url}/metrics/job/${job}/peerConnectionId/${id}`,
-    {
+
+  try {
+    const result = await pushgatewayClient.sendData({
       method,
-      headers,
-      body: method === 'POST' ? data : undefined
-    }
-  )
+      url,
+      job,
+      id,
+      username,
+      password,
+      gzip,
+      data,
+      statsCallback
+    })
 
-  const stats = await chrome.storage.local.get([
-    'messagesSent',
-    'bytesSent',
-    'totalTime',
-    'errors'
-  ])
-  if (data) {
-    stats.messagesSent = (stats.messagesSent || 0) + 1
-    stats.bytesSent = (stats.bytesSent || 0) + data.length
-    stats.totalTime = (stats.totalTime || 0) + Date.now() - start
+    // Update peer connection tracking on successful requests
+    await setPeerConnectionLastUpdate(
+      { id, origin },
+      method === 'POST' ? Date.now() : undefined
+    )
+
+    return result
+  } catch (error) {
+    // Re-throw with additional context for debugging
+    log(`sendData error for ${method} ${id}: ${error.message}`)
+    throw error
   }
-  if (!response.ok) {
-    stats.errors = (stats.errors || 0) + 1
-  }
-  await chrome.storage.local.set(stats)
-
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Response status: ${response.status} error: ${text}`)
-  }
-
-  await setPeerConnectionLastUpdate(
-    { id, origin },
-    method === 'POST' ? start : undefined
-  )
-
-  return response.text()
 }
 
 // Use quality limitation reasons from shared config
