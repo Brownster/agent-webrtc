@@ -1,4 +1,4 @@
-/* global chrome, pako */
+/* global chrome, importScripts */
 
 // Import shared modules
 importScripts('assets/pako.min.js')
@@ -48,12 +48,12 @@ self.WebRTCExporterLifecycle.createAndInitializeLifecycleManager({
   storageManager: self.WebRTCExporterStorage.StorageManager,
   config: self.WebRTCExporterConfig,
   logger
-}, async (alarm) => {
+}, async (_alarm) => {
   // Cleanup alarm handler - delegate to connection tracker
   return connectionTracker.cleanupStaleConnections(options).catch((err) => {
     log(`cleanup peer connections error: ${err.message}`)
   })
-}).then((lifecycleManager) => {
+}).then((_lifecycleManager) => {
   log('LifecycleManager initialized successfully')
 }).catch((error) => {
   log('LifecycleManager initialization failed:', error.message)
@@ -69,7 +69,7 @@ let tabMonitorInstance = null
 optionsManager.initialize().then((loadedOptions) => {
   Object.assign(options, loadedOptions)
   log('options loaded')
-  
+
   // Initialize tab monitor with initial options
   return self.WebRTCExporterTabMonitor.createAndInitializeTabMonitor({
     domainManager: self.WebRTCExporterDomains.DomainManager,
@@ -79,7 +79,7 @@ optionsManager.initialize().then((loadedOptions) => {
 }).then((tabMonitor) => {
   tabMonitorInstance = tabMonitor
   log('TabMonitor initialized successfully')
-  
+
   // Update current tab with initial options
   return tabMonitor.updateCurrentTab()
 }).then(() => {
@@ -91,7 +91,7 @@ optionsManager.initialize().then((loadedOptions) => {
   }, options)
 }).then((messageHandler) => {
   log('MessageHandler initialized successfully')
-  
+
   // Update message handler options when they change
   optionsManager.onChange((changeInfo) => {
     messageHandler.updateOptions(changeInfo.newOptions)
@@ -105,7 +105,7 @@ optionsManager.initialize().then((loadedOptions) => {
 optionsManager.onChange((changeInfo) => {
   Object.assign(options, changeInfo.newOptions)
   log('options changed')
-  
+
   // Update tab monitor with new options if it's initialized
   if (tabMonitorInstance) {
     tabMonitorInstance.updateOptions(changeInfo.newOptions)
@@ -114,8 +114,6 @@ optionsManager.onChange((changeInfo) => {
     })
   }
 })
-
-
 
 // Send data to pushgateway using the new client
 async function sendData (method, { id, origin }, data) {
@@ -139,7 +137,7 @@ async function sendData (method, { id, origin }, data) {
       { id, origin },
       method === 'POST' ? Date.now() : 0
     )
-    
+
     // Trigger UI update after connection state change
     if (tabMonitorInstance) {
       await tabMonitorInstance.updateCurrentTab()
@@ -154,4 +152,3 @@ async function sendData (method, { id, origin }, data) {
 }
 
 // Use quality limitation reasons from shared config
-

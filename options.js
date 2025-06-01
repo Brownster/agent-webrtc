@@ -1,4 +1,4 @@
-/* global chrome */
+/* Options page script - no globals needed */
 
 // Use direct references to shared modules to avoid const declaration conflicts
 

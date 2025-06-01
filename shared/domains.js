@@ -78,7 +78,7 @@ class DomainManager {
       return new URL(url).hostname.toLowerCase()
     } catch (error) {
       // Fallback: try to extract hostname manually
-      const match = url.match(/^(?:https?:\/\/)?([^\/]+)/)
+      const match = url.match(/^(?:https?:\/\/)?([^/]+)/)
       return match ? match[1].toLowerCase() : url.toLowerCase()
     }
   }

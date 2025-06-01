@@ -90,7 +90,7 @@ window.RTCPeerConnection = new Proxy(window.RTCPeerConnection, {
   construct (target, argumentsList) {
     WebrtcInternalsExporter.log('RTCPeerConnection', argumentsList)
 
-    const pc = new target(...argumentsList)
+    const pc = new target(...argumentsList) // eslint-disable-line new-cap
 
     webrtcInternalsExporter.add(pc)
 

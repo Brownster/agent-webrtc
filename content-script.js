@@ -17,11 +17,11 @@ if (window.location.protocol.startsWith('http')) {
   // Always log injection to verify it's working
   console.log('[webrtc-internal-exporter:content-script] Content script loaded on', window.location.origin)
 
-  const injectScript = (file_path) => {
+  const injectScript = (filePath) => {
     const head = document.querySelector('head')
     const script = document.createElement('script')
     script.setAttribute('type', 'text/javascript')
-    script.setAttribute('src', file_path)
+    script.setAttribute('src', filePath)
     head.appendChild(script)
   }
 

@@ -13,7 +13,6 @@ const { execSync } = require('child_process')
 const BUILD_DIR = 'build'
 const ROOT_DIR = process.cwd()
 const PACKAGE_JSON = require(path.join(ROOT_DIR, 'package.json'))
-const MANIFEST = require(path.join(ROOT_DIR, 'manifest.json'))
 
 // Files to include in the extension package
 const INCLUDE_FILES = [
@@ -37,26 +36,7 @@ const INCLUDE_DIRS = [
   'grafana'
 ]
 
-// Files/directories to exclude
-const EXCLUDE_PATTERNS = [
-  'node_modules',
-  'tests',
-  'coverage',
-  '.github',
-  'scripts',
-  '.git',
-  '.gitignore',
-  'package.json',
-  'package-lock.json',
-  'jest.config.js',
-  '.eslintrc.js',
-  'babel.config.js',
-  '*.test.js',
-  '*.spec.js',
-  'ROADMAP.md',
-  '.claude',
-  'debug.js'
-]
+// Note: Explicit include strategy used instead of exclude patterns
 
 function log (message) {
   console.log(`[package-extension] ${message}`)
