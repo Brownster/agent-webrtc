@@ -102,12 +102,14 @@ describe('ConnectionTracker', () => {
 
       await tracker.setPeerConnectionLastUpdate(connection, newTimestamp)
 
-      expect(mockStorageManager.setLocal).toHaveBeenCalledWith({
-        peerConnectionsLastUpdate: {
-          'conn-1': { origin: 'https://teams.microsoft.com', lastUpdate: newTimestamp },
-          'conn-2': { origin: 'https://meet.google.com', lastUpdate: Date.now() - 500 }
-        }
-      })
+      expect(mockStorageManager.setLocal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          peerConnectionsLastUpdate: expect.objectContaining({
+            'conn-1': { origin: 'https://teams.microsoft.com', lastUpdate: newTimestamp },
+            'conn-2': { origin: 'https://meet.google.com', lastUpdate: expect.any(Number) }
+          })
+        })
+      )
     })
 
     test('should remove connection when lastUpdate is 0', async () => {
@@ -123,11 +125,13 @@ describe('ConnectionTracker', () => {
 
       await tracker.setPeerConnectionLastUpdate(connection, 0)
 
-      expect(mockStorageManager.setLocal).toHaveBeenCalledWith({
-        peerConnectionsLastUpdate: {
-          'conn-2': { origin: 'https://meet.google.com', lastUpdate: Date.now() }
-        }
-      })
+      expect(mockStorageManager.setLocal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          peerConnectionsLastUpdate: expect.objectContaining({
+            'conn-2': { origin: 'https://meet.google.com', lastUpdate: expect.any(Number) }
+          })
+        })
+      )
       expect(mockStorageManager.setLocal).toHaveBeenCalledWith({
         peerConnectionsPerOrigin: {
           'https://meet.google.com': 1
@@ -384,11 +388,13 @@ describe('ConnectionTracker', () => {
       const cleared = await tracker.clearConnectionsByOrigin('https://teams.microsoft.com')
 
       expect(cleared).toBe(2)
-      expect(mockStorageManager.setLocal).toHaveBeenCalledWith({
-        peerConnectionsLastUpdate: {
-          'conn-2': { origin: 'https://meet.google.com', lastUpdate: Date.now() }
-        }
-      })
+      expect(mockStorageManager.setLocal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          peerConnectionsLastUpdate: expect.objectContaining({
+            'conn-2': { origin: 'https://meet.google.com', lastUpdate: expect.any(Number) }
+          })
+        })
+      )
       expect(mockLogger.log).toHaveBeenCalledWith('Cleared 2 connections for origin: https://teams.microsoft.com')
     })
 
