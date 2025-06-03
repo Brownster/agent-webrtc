@@ -136,11 +136,11 @@ describe('Import Path Validation', () => {
       expect(missingResources).toHaveLength(0)
     })
     
-    test('manifest should use background/index.js as service worker', () => {
+    test('manifest should use background.js as service worker', () => {
       const manifestPath = path.join(projectRoot, 'manifest.json')
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
       
-      expect(manifest.background.service_worker).toBe('background/index.js')
+      expect(manifest.background.service_worker).toBe('background.js')
     })
   })
   
