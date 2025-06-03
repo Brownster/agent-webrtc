@@ -18,11 +18,25 @@ if (window.location.protocol.startsWith('http')) {
   console.log('[webrtc-internal-exporter:content-script] Content script loaded on', window.location.origin)
 
   const injectScript = (filePath) => {
-    const head = document.querySelector('head')
     const script = document.createElement('script')
     script.setAttribute('type', 'text/javascript')
     script.setAttribute('src', filePath)
-    head.appendChild(script)
+    
+    // Safely append to head when available
+    const head = document.querySelector('head')
+    if (head) {
+      head.appendChild(script)
+    } else {
+      // Wait for head to be available
+      const observer = new MutationObserver(() => {
+        const head = document.querySelector('head')
+        if (head) {
+          observer.disconnect()
+          head.appendChild(script)
+        }
+      })
+      observer.observe(document, { childList: true, subtree: true })
+    }
   }
 
   setTimeout(() => injectScript(chrome.runtime.getURL('override.js')))
@@ -43,29 +57,51 @@ if (window.location.protocol.startsWith('http')) {
   }
 
   // Load domain manager for proper domain checking
-  const domainManagerScript = document.createElement('script')
-  domainManagerScript.src = chrome.runtime.getURL('shared/domains.js')
-  domainManagerScript.onload = () => {
-    // Now we can use domain manager
-    chrome.storage.sync
-      .get(['url', 'enabledOrigins', 'updateInterval', 'enabledStats'])
-      .then((ret) => {
-        log('options loaded:', ret)
-        options.url = ret.url || ''
-        // Use proper domain checking logic
-        const DomainManager = window.WebRTCExporterDomains?.DomainManager
-        if (DomainManager) {
-          options.enabled = DomainManager.shouldAutoEnable(window.location.origin, ret.enabledOrigins || {})
-        } else {
-          // Fallback to simple check
-          options.enabled = !(ret.enabledOrigins && ret.enabledOrigins[window.location.origin] === false)
+  const loadDomainManager = () => {
+    const domainManagerScript = document.createElement('script')
+    domainManagerScript.src = chrome.runtime.getURL('shared/domains.js')
+    domainManagerScript.onload = () => {
+      // Now we can use domain manager
+      chrome.storage.sync
+        .get(['url', 'enabledOrigins', 'updateInterval', 'enabledStats'])
+        .then((ret) => {
+          log('options loaded:', ret)
+          options.url = ret.url || ''
+          // Use proper domain checking logic
+          const DomainManager = window.WebRTCExporterDomains?.DomainManager
+          if (DomainManager) {
+            options.enabled = DomainManager.shouldAutoEnable(window.location.origin, ret.enabledOrigins || {})
+          } else {
+            // Fallback to simple check
+            options.enabled = !(ret.enabledOrigins && ret.enabledOrigins[window.location.origin] === false)
+          }
+          options.updateInterval = (ret.updateInterval || 2) * 1000
+          options.enabledStats = ret.enabledStats || ['inbound-rtp', 'remote-inbound-rtp', 'outbound-rtp']
+          sendOptions()
+        })
+    }
+    
+    // Safely append to head when available
+    if (document.head) {
+      document.head.appendChild(domainManagerScript)
+    } else {
+      // Wait for DOM to be ready
+      const observer = new MutationObserver(() => {
+        if (document.head) {
+          observer.disconnect()
+          document.head.appendChild(domainManagerScript)
         }
-        options.updateInterval = (ret.updateInterval || 2) * 1000
-        options.enabledStats = ret.enabledStats || ['inbound-rtp', 'remote-inbound-rtp', 'outbound-rtp']
-        sendOptions()
       })
+      observer.observe(document, { childList: true, subtree: true })
+    }
   }
-  document.head.appendChild(domainManagerScript)
+  
+  // Load domain manager when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadDomainManager)
+  } else {
+    loadDomainManager()
+  }
 
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
