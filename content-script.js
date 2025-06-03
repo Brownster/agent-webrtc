@@ -42,19 +42,32 @@ if (window.location.protocol.startsWith('http')) {
     })
   }
 
-  try {
+  // Load domain manager for proper domain checking
+  const domainManagerScript = document.createElement('script')
+  domainManagerScript.src = chrome.runtime.getURL('shared/domains.js')
+  domainManagerScript.onload = () => {
+    // Now we can use domain manager
     chrome.storage.sync
       .get(['url', 'enabledOrigins', 'updateInterval', 'enabledStats'])
       .then((ret) => {
         log('options loaded:', ret)
         options.url = ret.url || ''
-        // Auto-enable on target domains, but allow manual override
-        options.enabled = !(ret.enabledOrigins && ret.enabledOrigins[window.location.origin] === false)
+        // Use proper domain checking logic
+        const DomainManager = window.WebRTCExporterDomains?.DomainManager
+        if (DomainManager) {
+          options.enabled = DomainManager.shouldAutoEnable(window.location.origin, ret.enabledOrigins || {})
+        } else {
+          // Fallback to simple check
+          options.enabled = !(ret.enabledOrigins && ret.enabledOrigins[window.location.origin] === false)
+        }
         options.updateInterval = (ret.updateInterval || 2) * 1000
         options.enabledStats = ret.enabledStats || ['inbound-rtp', 'remote-inbound-rtp', 'outbound-rtp']
         sendOptions()
       })
+  }
+  document.head.appendChild(domainManagerScript)
 
+  try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'sync') return
 
@@ -64,8 +77,14 @@ if (window.location.protocol.startsWith('http')) {
           options.url = newValue
           changed = true
         } else if (key === 'enabledOrigins') {
-          // Auto-enable unless explicitly disabled
-          options.enabled = newValue[window.location.origin] !== false
+          // Use proper domain checking logic
+          const DomainManager = window.WebRTCExporterDomains?.DomainManager
+          if (DomainManager) {
+            options.enabled = DomainManager.shouldAutoEnable(window.location.origin, newValue || {})
+          } else {
+            // Fallback to simple check
+            options.enabled = newValue[window.location.origin] !== false
+          }
           changed = true
         } else if (key === 'updateInterval') {
           options.updateInterval = newValue * 1000

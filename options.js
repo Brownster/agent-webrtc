@@ -77,7 +77,10 @@ async function toggleDomain (item) {
   const domain = item.origin || item // Support both object and string format
   const origins = { ...currentOptions.enabledOrigins }
 
-  if (window.WebRTCExporterDomains.TARGET_DOMAINS.includes(domain)) {
+  // Use DomainManager to check if it's a target domain
+  const isTargetDomain = window.WebRTCExporterDomains.DomainManager.isTargetDomain(domain)
+
+  if (isTargetDomain) {
     // For target domains, toggle between auto-enabled (undefined) and disabled (false)
     if (origins[domain] === false) {
       delete origins[domain] // Remove to allow auto-enable
@@ -107,7 +110,7 @@ function renderDomainsList () {
   container.innerHTML = ''
 
   Array.from(allOrigins).forEach(origin => {
-    const isTargetDomain = window.WebRTCExporterDomains.TARGET_DOMAINS.includes(origin)
+    const isTargetDomain = window.WebRTCExporterDomains.DomainManager.isTargetDomain(origin)
     const explicitSetting = currentOptions.enabledOrigins[origin]
 
     let status

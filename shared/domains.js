@@ -185,11 +185,35 @@ class DomainManager {
    * @returns {boolean} True if should be enabled
    */
   static shouldAutoEnable (origin, enabledOrigins = {}) {
+    if (!enabledOrigins || typeof enabledOrigins !== 'object') {
+      enabledOrigins = {}
+    }
+
     const isTarget = DomainManager.isTargetDomain(origin)
 
     // Auto-enable target domains unless explicitly disabled
     if (isTarget) {
-      return enabledOrigins[origin] !== false
+      // Check both exact origin match and hostname-based match
+      const hostname = DomainManager.extractHostname(origin)
+      
+      // Check for exact origin match first
+      if (enabledOrigins[origin] === false) {
+        return false
+      }
+      
+      // Check for hostname-based match (e.g., 'teams.microsoft.com')
+      if (enabledOrigins[hostname] === false) {
+        return false
+      }
+      
+      // Check for any target domain that matches this hostname
+      for (const targetDomain of TARGET_DOMAINS) {
+        if (hostname.includes(targetDomain) && enabledOrigins[targetDomain] === false) {
+          return false
+        }
+      }
+      
+      return true
     }
 
     // For non-target domains, only enable if explicitly set
