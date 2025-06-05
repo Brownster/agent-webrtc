@@ -143,7 +143,7 @@ jobs:
     - name: Check for hardcoded secrets
       run: |
         # Check for common secret patterns
-        if grep -r -E "(password|secret|key|token).*=.*['\"][^'\"]{8,}['\"]" --include="*.js" --exclude-dir=node_modules .; then
+        if grep -r -i -E "(password|secret|token|api[_-]?key)\s*[:=]\s*['\\"][^'\\"]{8,}['\\"]" --include="*.js" --exclude-dir=node_modules .; then
           echo "❌ Potential hardcoded secrets found"
           exit 1
         fi

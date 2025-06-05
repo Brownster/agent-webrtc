@@ -195,24 +195,24 @@ class DomainManager {
     if (isTarget) {
       // Check both exact origin match and hostname-based match
       const hostname = DomainManager.extractHostname(origin)
-      
+
       // Check for exact origin match first
       if (enabledOrigins[origin] === false) {
         return false
       }
-      
+
       // Check for hostname-based match (e.g., 'teams.microsoft.com')
       if (enabledOrigins[hostname] === false) {
         return false
       }
-      
+
       // Check for any target domain that matches this hostname
       for (const targetDomain of TARGET_DOMAINS) {
         if (hostname.includes(targetDomain) && enabledOrigins[targetDomain] === false) {
           return false
         }
       }
-      
+
       return true
     }
 
