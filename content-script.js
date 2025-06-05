@@ -21,7 +21,7 @@ if (window.location.protocol.startsWith('http')) {
     const script = document.createElement('script')
     script.setAttribute('type', 'text/javascript')
     script.setAttribute('src', filePath)
-    
+
     // Safely append to head when available
     const head = document.querySelector('head')
     if (head) {
@@ -80,7 +80,7 @@ if (window.location.protocol.startsWith('http')) {
           sendOptions()
         })
     }
-    
+
     // Safely append to head when available
     if (document.head) {
       document.head.appendChild(domainManagerScript)
@@ -95,7 +95,7 @@ if (window.location.protocol.startsWith('http')) {
       observer.observe(document, { childList: true, subtree: true })
     }
   }
-  
+
   // Load domain manager when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadDomainManager)
