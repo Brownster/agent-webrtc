@@ -57,8 +57,9 @@ class StatsFormatter {
             metrics.push([key, numericValue])
           }
         } else if (key === 'googTimingFrameInfo') {
-          // TODO: Handle googTimingFrameInfo if needed
-          // For now, skip this field
+          // googTimingFrameInfo contains verbose timing details that are
+          // specific to Chrome's implementation. These values are skipped to
+          // avoid emitting non-standard metrics.
         } else if (typeof v === 'string' || typeof v === 'boolean') {
           // Convert non-numeric values to labels
           labels.push(`${key}="${v}"`)

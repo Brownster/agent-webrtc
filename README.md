@@ -19,7 +19,7 @@ An enterprise-grade Chrome extension that automatically captures WebRTC statisti
 - **🛡️ Enterprise Reliability**: Dual circuit breaker patterns with <0.1% failure rate during outages
 - **🔧 Auto-Recovery**: Self-healing from storage and network failures without manual intervention
 - **📦 Request Queuing**: Zero data loss through automatic request queuing during outages
-- **🧪 Battle-Tested**: 334 comprehensive tests with 91%+ code coverage
+- **🧪 Battle-Tested**: Extensive test suite with over 15 files and 80%+ coverage
 
 ## 🛡️ Reliability Features
 
@@ -118,18 +118,18 @@ npm run validate
 ```
 
 ### Testing
-The project includes comprehensive test coverage with **91%+ code coverage**:
+The project includes comprehensive test coverage with **80%+ code coverage**:
 - **Unit Tests**: Individual module testing with Jest
 - **Integration Tests**: Component interaction and failure scenario testing
 - **Circuit Breaker Tests**: Comprehensive reliability pattern testing
 - **Direct Import Tests**: Coverage-tracked testing of shared modules
 
 **Current Test Results:**
-- ✅ **351 tests passing** across 38 test files
-- ✅ **91.66% statement coverage**
-- ✅ **89.28% branch coverage**
+- ✅ **All tests passing** across 15 test files
+- ✅ **80%+ statement coverage**
+- ✅ **70%+ branch coverage**
 - ✅ **100% function coverage**
-- ✅ **Zero regressions** across all reliability enhancements
+- ✅ **Zero regressions** across reliability features
 
 Run tests with:
 ```bash
@@ -162,7 +162,7 @@ npm run test:ci         # CI mode with full reporting
 ├── override.js            # WebRTC hook injection script
 ├── popup.html/js          # Extension popup UI
 ├── options.html/js        # Options page UI
-├── tests/                 # Test suite (334 tests, 91%+ coverage)
+├── tests/                 # Test suite (15 files, 80%+ coverage)
 │   ├── modules/           # Jest-compatible module wrappers
 │   ├── unit/              # Unit tests (37 test files)
 │   ├── utils/             # Test utilities and helpers
@@ -237,7 +237,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For issues, feature requests, or questions:
 - Open an issue on GitHub
 - Check the [troubleshooting guide](tests/README.md)
-- Review the [development documentation](CLAUDE.md)
+- Review the [Developer Guide](docs/DEVELOPER_GUIDE.md)
 
 ## 🙏 Acknowledgments
 
