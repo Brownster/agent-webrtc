@@ -110,7 +110,7 @@ jobs:
         - ✅ Prometheus Pushgateway integration
         - ✅ Configurable collection intervals and filtering
         - ✅ Real-time connection monitoring
-        - ✅ Comprehensive test coverage (91%+)
+        - ✅ Comprehensive test coverage (80%+)
         
         ## 🌐 Supported Platforms
         
