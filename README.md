@@ -5,7 +5,7 @@
 [![coverage](https://codecov.io/gh/Brownster/agent-webrtc/graph/badge.svg?branch=main)](https://codecov.io/gh/Brownster/agent-webrtc)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/Brownster/agent-webrtc/releases/tag/v2.0.0)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/Brownster/agent-webrtc/releases/tag/v2.0.1)
 
 An enterprise-grade Chrome extension that automatically captures WebRTC statistics from supported communication platforms and exports them to a Prometheus Pushgateway with comprehensive reliability features and fault tolerance.
 
