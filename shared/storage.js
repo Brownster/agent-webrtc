@@ -22,8 +22,8 @@ class StorageManager {
   _initializeCircuitBreaker () {
     try {
       const CircuitBreakerModule = globalThis.WebRTCExporterStorageCircuitBreaker ||
-                                   self.WebRTCExporterStorageCircuitBreaker ||
-                                   window.WebRTCExporterStorageCircuitBreaker
+                                   (typeof self !== 'undefined' && self.WebRTCExporterStorageCircuitBreaker) ||
+                                   (typeof window !== 'undefined' && window.WebRTCExporterStorageCircuitBreaker)
 
       if (CircuitBreakerModule) {
         this.circuitBreaker = new CircuitBreakerModule.StorageCircuitBreaker(5, 60000)
