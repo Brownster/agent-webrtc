@@ -195,12 +195,12 @@ jobs:
         
         echo "✅ Extension package created successfully"
         
-    - name: Upload extension package
-      uses: actions/upload-artifact@v3
-      with:
-        name: extension-package
-        path: dist/webrtc-stats-exporter-pro-*.zip
-        retention-days: 30
+      - name: Upload extension package
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: dist/webrtc-stats-exporter-pro-*.zip
+          retention-days: 30
 
   performance-test:
     name: Performance Test
