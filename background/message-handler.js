@@ -228,41 +228,43 @@ class MessageHandler {
    * Main message handler for chrome.runtime.onMessage
    * @private
    */
-  async _handleMessage (message, sender, sendResponse) {
-    try {
-      // Validate message structure
-      if (!message || typeof message !== 'object') {
-        sendResponse({ error: 'Invalid message format' })
-        return
+  _handleMessage (message, sender, sendResponse) {
+    (async () => {
+      try {
+        // Validate message structure
+        if (!message || typeof message !== 'object') {
+          sendResponse({ error: 'Invalid message format' })
+          return
+        }
+
+        const { event, data } = message
+
+        if (!event) {
+          sendResponse({ error: 'Missing event type' })
+          return
+        }
+
+        // Get handler for this event type
+        const handler = this.messageHandlers.get(event)
+
+        if (!handler) {
+          this.logger?.log(`No handler registered for event: ${event}`)
+          sendResponse({ error: 'Unknown event type' })
+          return
+        }
+
+        // Execute handler
+        this.logger?.log(`Handling message event: ${event}`)
+        const result = await handler(data, sender)
+
+        // Send successful response
+        sendResponse({ success: true, ...result })
+      } catch (error) {
+        this.logger?.log(`Message handler error: ${error.message}`)
+        sendResponse({ error: error.message })
       }
-
-      const { event, data } = message
-
-      if (!event) {
-        sendResponse({ error: 'Missing event type' })
-        return
-      }
-
-      // Get handler for this event type
-      const handler = this.messageHandlers.get(event)
-
-      if (!handler) {
-        this.logger?.log(`No handler registered for event: ${event}`)
-        sendResponse({ error: 'Unknown event type' })
-        return
-      }
-
-      // Execute handler
-      this.logger?.log(`Handling message event: ${event}`)
-      const result = await handler(data, sender)
-
-      // Send successful response
-      sendResponse({ success: true, ...result })
-
-    } catch (error) {
-      this.logger?.log(`Message handler error: ${error.message}`)
-      sendResponse({ error: error.message })
-    }
+    })()
+    return true
   }
 }
 

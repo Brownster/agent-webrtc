@@ -326,8 +326,10 @@ describe('MessageHandler', () => {
         }
       }
 
-      await messageListener(message, {}, sendResponse)
+      const result = messageListener(message, {}, sendResponse)
+      await new Promise(setImmediate)
 
+      expect(result).toBe(true)
       expect(sendResponse).toHaveBeenCalledWith({
         success: true,
         action: 'sent',
@@ -339,10 +341,12 @@ describe('MessageHandler', () => {
       const messageListener = mockChrome.runtime.onMessage.addListener.mock.calls[0][0]
       const sendResponse = jest.fn()
 
-      await messageListener(null, {}, sendResponse)
+      let result = messageListener(null, {}, sendResponse)
+      expect(result).toBe(true)
       expect(sendResponse).toHaveBeenCalledWith({ error: 'Invalid message format' })
 
-      await messageListener('string', {}, sendResponse)
+      result = messageListener('string', {}, sendResponse)
+      expect(result).toBe(true)
       expect(sendResponse).toHaveBeenCalledWith({ error: 'Invalid message format' })
     })
 
@@ -351,8 +355,8 @@ describe('MessageHandler', () => {
       const sendResponse = jest.fn()
       const message = { data: {} }
 
-      await messageListener(message, {}, sendResponse)
-
+      const result = messageListener(message, {}, sendResponse)
+      expect(result).toBe(true)
       expect(sendResponse).toHaveBeenCalledWith({ error: 'Missing event type' })
     })
 
@@ -361,8 +365,10 @@ describe('MessageHandler', () => {
       const sendResponse = jest.fn()
       const message = { event: 'unknown-event', data: {} }
 
-      await messageListener(message, {}, sendResponse)
+      const result = messageListener(message, {}, sendResponse)
+      await new Promise(setImmediate)
 
+      expect(result).toBe(true)
       expect(sendResponse).toHaveBeenCalledWith({ error: 'Unknown event type' })
       expect(mockLogger.log).toHaveBeenCalledWith('No handler registered for event: unknown-event')
     })
@@ -375,8 +381,10 @@ describe('MessageHandler', () => {
       const sendResponse = jest.fn()
       const message = { event: 'error-event', data: {} }
 
-      await messageListener(message, {}, sendResponse)
+      const result = messageListener(message, {}, sendResponse)
+      await new Promise(setImmediate)
 
+      expect(result).toBe(true)
       expect(sendResponse).toHaveBeenCalledWith({ error: 'Handler error' })
       expect(mockLogger.log).toHaveBeenCalledWith('Message handler error: Handler error')
     })
@@ -390,8 +398,10 @@ describe('MessageHandler', () => {
       const message = { event: 'custom-event', data: { test: 'data' } }
       const sender = { tab: { id: 1 } }
 
-      await messageListener(message, sender, sendResponse)
+      const result = messageListener(message, sender, sendResponse)
+      await new Promise(setImmediate)
 
+      expect(result).toBe(true)
       expect(customHandler).toHaveBeenCalledWith({ test: 'data' }, sender)
       expect(sendResponse).toHaveBeenCalledWith({
         success: true,
