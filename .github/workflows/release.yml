@@ -117,7 +117,7 @@ jobs:
         - Microsoft Teams (`teams.microsoft.com`)
         - Google Meet (`meet.google.com`)
         - Amazon Connect (`awsapps.com`, `my.connect.aws`)
-        - Genesys Cloud (`mypurecloud.com`, `genesys.com`, regional domains)
+        - Genesys Cloud (`*.pure.cloud`)
         
         ## 📋 Requirements
         
