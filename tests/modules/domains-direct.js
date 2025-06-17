@@ -19,9 +19,7 @@ const DOMAIN_CATEGORIES = {
   MICROSOFT: ["teams.microsoft.com"],
   GOOGLE: ["meet.google.com"],
   AMAZON: ["awsapps.com", "my.connect.aws"],
-  GENESYS: [
-    "pure.cloud"
-  ],
+  GENESYS: ["pure.cloud"],
 };
 
 /**
