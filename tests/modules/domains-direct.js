@@ -17,9 +17,7 @@ const TARGET_DOMAINS = [
   "mypurecloud.ie", 
   "mypurecloud.de",
   "mypurecloud.jp",
-  "usw2.pure.cloud",
-  "cac1.pure.cloud", 
-  "euw1.pure.cloud"
+  "pure.cloud"
 ];
 
 // Domain categories for different handling
@@ -34,9 +32,7 @@ const DOMAIN_CATEGORIES = {
     "mypurecloud.ie",
     "mypurecloud.de", 
     "mypurecloud.jp",
-    "usw2.pure.cloud",
-    "cac1.pure.cloud",
-    "euw1.pure.cloud"
+    "pure.cloud"
   ],
 };
 

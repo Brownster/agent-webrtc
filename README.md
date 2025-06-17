@@ -41,7 +41,7 @@ An enterprise-grade Chrome extension that automatically captures WebRTC statisti
 - Microsoft Teams
 - Google Meet  
 - Amazon Connect (CCP)
-- Genesys Cloud (PureCloud)
+- Genesys Cloud (PureCloud, `*.pure.cloud`)
 - And other WebRTC-based communication platforms
 
 ## 🚀 Installation
