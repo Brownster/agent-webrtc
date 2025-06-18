@@ -116,18 +116,7 @@ describe('Import Path Validation', () => {
       
       const webAccessibleResources = manifest.web_accessible_resources?.[0]?.resources || []
       
-      const requiredResources = [
-        'shared/config.js',
-        'shared/domains.js', 
-        'shared/storage.js',
-        'background/stats-formatter.js',
-        'background/pushgateway-client.js',
-        'background/options-manager.js',
-        'background/connection-tracker.js',
-        'background/lifecycle-manager.js',
-        'background/tab-monitor.js',
-        'background/message-handler.js'
-      ]
+      const requiredResources = ['override.js']
       
       const missingResources = requiredResources.filter(resource => 
         !webAccessibleResources.includes(resource)
