@@ -1,7 +1,7 @@
+// content-script.js
 (function () {
     'use strict'
     const LOG_PREFIX = '[webrtc-exporter:content-script]'
-    console.log(LOG_PREFIX, 'Running at document_start.')
 
     // --- Part 1: Injection ---
     const script = document.createElement('script')
@@ -18,35 +18,35 @@
         try {
             port = chrome.runtime.connect({ name: 'webrtc-stats-port' })
             port.onDisconnect.addListener(() => {
-                console.warn(LOG_PREFIX, 'Port disconnected.')
+                console.warn(LOG_PREFIX, 'Port disconnected from background.')
                 port = null
             })
             console.log(LOG_PREFIX, 'Port connected to background.')
-
-            // Announce readiness to override script
-            window.postMessage({ type: 'CS_READY' }, '*')
         } catch (error) {
-            console.error(LOG_PREFIX, 'Could not connect to background script:', error)
+            console.error(LOG_PREFIX, 'Failed to connect to background:', error)
             port = null
         }
     }
 
+    // --- Part 3: Message Relay ---
     window.addEventListener('message', (event) => {
         if (event.source !== window || !event.data || event.data.source !== 'webrtc-exporter-override') {
             return
         }
 
-        if (!port) connect()
+        if (!port) {
+            connect()
+        }
 
         if (port) {
             try {
                 port.postMessage(event.data)
             } catch (error) {
-                console.error(LOG_PREFIX, 'Failed to relay message. Port may be closed.', error)
+                console.error(LOG_PREFIX, 'Failed to post message to background. Port is likely invalid.', error.message)
                 port = null
             }
         } else {
-            console.error(LOG_PREFIX, 'Port not available to relay message.')
+            console.error(LOG_PREFIX, 'Cannot relay message, port is unavailable.')
         }
     })
 
