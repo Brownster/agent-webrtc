@@ -37,23 +37,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": [
-        "override.js",
-        "shared/config.js", 
-        "shared/domains.js", 
-        "shared/storage.js",
-        "shared/storage-circuit-breaker.js",
-        "shared/lifecycle-manager.js",
-        "background/stats-formatter.js", 
-        "background/pushgateway-client.js", 
-        "background/network-circuit-breaker.js",
-        "background/options-manager.js", 
-        "background/connection-tracker.js", 
-        "background/lifecycle-manager.js", 
-        "background/tab-monitor.js", 
-        "background/message-handler.js",
-        "assets/pako.min.js"
-      ],
+      "resources": ["override.js"],
       "matches": ["<all_urls>"]
     }
   ],

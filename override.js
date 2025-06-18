@@ -1,124 +1,80 @@
-// override.js - Final Cooperative Override
-(function () {
-  'use strict'
-  console.log('[webrtc-exporter:override] Unified override script running.')
+(function() {
+    'use strict';
+    console.log('[webrtc-exporter:override] Unified override script running.');
 
-  const NativeRTCPeerConnection = window.RTCPeerConnection
-  if (!NativeRTCPeerConnection) {
-    console.error('[webrtc-exporter] Native RTCPeerConnection not found!')
-    return
-  }
-
-  class WebrtcInternalsExporter {
-    peerConnections = new Map()
-    url = ''
-    enabled = false
-    updateInterval = 2000
-    enabledStats = []
-
-    constructor () {
-      window.addEventListener('message', async (message) => {
-        if (message.data && message.data.type === 'webrtc-exporter-options') {
-          console.log('[webrtc-exporter:override] Options received:', message.data.options)
-          Object.assign(this, message.data.options)
-        }
-      })
-
-      console.log('[webrtc-exporter:override] Exporter initialized, posting ready event')
-      window.postMessage({ type: 'webrtc-exporter-ready' })
+    const OriginalRTCPeerConnection = window.RTCPeerConnection;
+    if (!OriginalRTCPeerConnection) {
+        console.warn('[webrtc-exporter:override] window.RTCPeerConnection not found. Aborting.');
+        return;
     }
 
-    static log (...args) {
-      console.log('[webrtc-exporter:override]', ...args)
-    }
+    let activeAdapterShim = OriginalRTCPeerConnection;
 
-    static randomId () {
-      if ('randomUUID' in window.crypto) {
-        return window.crypto.randomUUID()
-      } else {
-        return (Date.now() + Math.random()).toString(36)
-      }
-    }
+    const overrideId = Math.random().toString(36).substr(2, 9);
 
-    add (pc) {
-      const id = WebrtcInternalsExporter.randomId()
-      WebrtcInternalsExporter.log(`Adding RTCPeerConnection with ID: ${id}`)
-      this.peerConnections.set(id, pc)
-
-      pc.addEventListener('connectionstatechange', () => {
-        WebrtcInternalsExporter.log(`Connection state for ${id} changed to: ${pc.connectionState}`)
-        if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
-          this.collectStats(id)
-          this.peerConnections.delete(id)
-        }
-      })
-
-      this.collectStats(id)
-    }
-
-    async collectStats (id) {
-      const pc = this.peerConnections.get(id)
-      if (!pc) return
-
-      if (this.url && this.enabled) {
+    function post(type, detail) {
         try {
-          const stats = await pc.getStats()
-          const allStats = [...stats.values()]
-          const values = allStats.filter(v => ['peer-connection', ...this.enabledStats].includes(v.type))
-
-          if (values.length > 0) {
-            const payload = {
-              url: window.location.href,
-              id,
-              state: pc.connectionState,
-              values
-            }
-            const event = new CustomEvent('webrtcStatsToRelay', { detail: payload })
-            window.dispatchEvent(event)
-          }
-        } catch (error) {
-          WebrtcInternalsExporter.log(`Error in collectStats for ${id}: ${error.message}`)
-          this.peerConnections.delete(id)
-          return
+            window.postMessage({
+                source: 'webrtc-exporter-override',
+                type,
+                detail
+            }, '*');
+        } catch (e) {
+            console.error('[webrtc-exporter:override] postMessage failed:', e);
         }
-      }
-
-      if (this.peerConnections.has(id)) {
-        setTimeout(() => this.collectStats(id), this.updateInterval)
-      }
     }
-  }
-  const webrtcInternalsExporter = new WebrtcInternalsExporter()
 
-  // Store the original native implementation and keep track of any adapter-applied shim
-  const OriginalRTCPeerConnection = NativeRTCPeerConnection
-  let ActiveAdapterShim = OriginalRTCPeerConnection
+    const RTCPeerConnectionProxy = function(...args) {
+        console.log(`[webrtc-exporter:override ${overrideId}] PROXY CONSTRUCTOR CALLED.`);
 
-  // Proxy implemented as a normal function so its prototype remains writable
-  const RTCPeerConnectionProxy = function (...args) {
-    console.log('[webrtc-exporter] PROXY CONSTRUCTOR CALLED. Using the latest shim/original.')
-    const pc = new ActiveAdapterShim(...args)
-    webrtcInternalsExporter.add(pc)
-    return pc
-  }
+        const pc = new activeAdapterShim(...args);
 
-  // Align proxy prototype with the underlying implementation
-  Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, OriginalRTCPeerConnection.prototype)
-  RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy
+        post('PC_CREATED', {
+            peerConnectionId: pc.id || (pc.id = `pc_${Math.random().toString(36).substr(2, 9)}`)
+        });
 
-  Object.defineProperty(window, 'RTCPeerConnection', {
-    get: function () {
-      console.log('[webrtc-exporter] GET intercepted. Returning our proxy function.')
-      return RTCPeerConnectionProxy
-    },
-    set: function (newValue) {
-      console.log('[webrtc-exporter] SET intercepted. A script (likely webrtc-adapter) is applying a shim. We will allow it and use it.')
-      ActiveAdapterShim = newValue
-      Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, newValue.prototype)
-      RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy
-    },
-    configurable: true
-  })
+        const originalGetStats = pc.getStats.bind(pc);
+        pc.getStats = (...getStatsArgs) => {
+            return originalGetStats(...getStatsArgs).then(stats => {
+                const report = [];
+                stats.forEach(value => report.push(value));
+                post('STATS_REPORT', { peerConnectionId: pc.id, report });
+                return stats;
+            });
+        };
 
-  console.log('[webrtc-exporter] Override complete. Awaiting calls.')
-})()
+        const originalSetter = pc.__lookupSetter__('oniceconnectionstatechange');
+        Object.defineProperty(pc, 'oniceconnectionstatechange', {
+            set: function(callback) {
+                const newCallback = function(...cbArgs) {
+                    post('STATE_CHANGE', { peerConnectionId: pc.id, state: pc.iceConnectionState });
+                    if (callback) {
+                        callback.apply(pc, cbArgs);
+                    }
+                };
+                if (originalSetter) {
+                    originalSetter.call(pc, newCallback);
+                }
+            },
+            get: pc.__lookupGetter__('oniceconnectionstatechange')
+        });
+
+        return pc;
+    };
+
+    Object.defineProperty(window, 'RTCPeerConnection', {
+        get: function() {
+            console.log(`[webrtc-exporter:override ${overrideId}] GET intercepted. Returning proxy.`);
+            return RTCPeerConnectionProxy;
+        },
+        set: function(newValue) {
+            console.log(`[webrtc-exporter:override ${overrideId}] SET intercepted. Adapting to shim.`);
+            activeAdapterShim = newValue;
+            Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, newValue.prototype);
+            RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy;
+        },
+        configurable: true
+    });
+
+    console.log(`[webrtc-exporter:override ${overrideId}] Override complete. Awaiting calls.`);
+})();
