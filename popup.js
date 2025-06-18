@@ -1,4 +1,3 @@
-/* global chrome */
 
 // Use direct references to shared modules to avoid const declaration conflicts
 
