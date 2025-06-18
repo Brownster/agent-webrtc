@@ -100,11 +100,8 @@ jobs:
       run: |
         required_files=(
           "background.js"
-          "content-script-start.js"
-          "content-script-end.js"
+          "content-script.js"
           "override.js"
-          "override-stage1.js"
-          "override-stage2.js"
           "popup.html"
           "popup.js"
           "options.html"
