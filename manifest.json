@@ -38,7 +38,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "override.js", 
+        "override.js",
+        "override-stage1.js",
+        "override-stage2.js",
         "shared/config.js", 
         "shared/domains.js", 
         "shared/storage.js",
@@ -81,8 +83,29 @@
         "*://*.mypurecloud.jp/*",
         "*://*.pure.cloud/*"
       ],
-      "js": ["content-script.js"],
-      "run_at": "document_start"
+      "js": ["content-script-start.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "*://*.teams.microsoft.com/*",
+        "*://teams.microsoft.com/*",
+        "*://meet.google.com/*",
+        "*://*.meet.google.com/*",
+        "*://*.awsapps.com/*",
+        "*://*.my.connect.aws/*",
+        "*://*.mypurecloud.com/*",
+        "*://*.genesys.com/*",
+        "*://*.mypurecloud.com.au/*",
+        "*://*.mypurecloud.ie/*",
+        "*://*.mypurecloud.de/*",
+        "*://*.mypurecloud.jp/*",
+        "*://*.pure.cloud/*"
+      ],
+      "js": ["content-script-end.js"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ]
 }

@@ -50,7 +50,7 @@ if (window.location.protocol.startsWith('http')) {
     }
   }
 
-  setTimeout(() => injectScript(chrome.runtime.getURL('override.js')))
+  setTimeout(() => injectScript(chrome.runtime.getURL('override-stage2.js')))
 
   // Handle options.
   const options = {
@@ -63,6 +63,12 @@ if (window.location.protocol.startsWith('http')) {
   const sendOptions = () => {
     window.postMessage({
       event: 'webrtc-internal-exporter:options',
+      options
+    })
+
+    // For newer override scripts using the `type` field
+    window.postMessage({
+      type: 'webrtc-exporter-options',
       options
     })
   }
@@ -166,11 +172,11 @@ if (window.location.protocol.startsWith('http')) {
 
     // Handle messages from override script (options and legacy stats events)
     window.addEventListener('message', (message) => {
-      const { event, url, id, state, values } = message.data
-      if (event === 'webrtc-internal-exporter:ready') {
+      const { event, type, url, id, state, values } = message.data
+      if (event === 'webrtc-internal-exporter:ready' || type === 'webrtc-exporter-ready') {
         console.log('[webrtc-internal-exporter:content-script] Override script ready, sending options')
         sendOptions()
-      } else if (event === 'webrtc-internal-exporter:peer-connection-stats') {
+      } else if (event === 'webrtc-internal-exporter:peer-connection-stats' || type === 'webrtc-exporter-peer-connection-stats') {
         console.log('[webrtc-internal-exporter:content-script] Received peer-connection-stats', { url, id, state, valuesCount: values?.length })
         log('peer-connection-stats', { url, id, state, values })
         try {
