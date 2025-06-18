@@ -90,34 +90,33 @@
   }
   const webrtcInternalsExporter = new WebrtcInternalsExporter()
 
-  function createProxy (target) {
-    const RTCPeerConnectionProxy = class extends target {
-      constructor (...args) {
-        console.log('!!!!!! [webrtc-exporter] PROXY CONSTRUCTOR CALLED !!!!!!', args)
-        super(...args)
-        webrtcInternalsExporter.add(this)
-      }
-    }
-    for (const staticMethod in target) {
-      if (Object.prototype.hasOwnProperty.call(target, staticMethod)) {
-        RTCPeerConnectionProxy[staticMethod] = target[staticMethod]
-      }
-    }
-    return RTCPeerConnectionProxy
+  // Store the original native implementation and keep track of any adapter-applied shim
+  const OriginalRTCPeerConnection = NativeRTCPeerConnection
+  let activeAdapterShim = OriginalRTCPeerConnection
+
+  // Proxy implemented as a normal function so its prototype remains writable
+  const RTCPeerConnectionProxy = function (...args) {
+    console.log('[webrtc-exporter] PROXY CONSTRUCTOR CALLED. Using the latest shim/original.')
+    const pc = new activeAdapterShim(...args)
+    webrtcInternalsExporter.add(pc)
+    return pc
   }
 
-  let currentPeerConnection = NativeRTCPeerConnection
+  // Align proxy prototype with the underlying implementation
+  Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, OriginalRTCPeerConnection.prototype)
+  RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy
 
   Object.defineProperty(window, 'RTCPeerConnection', {
     get: function () {
-      console.log('[webrtc-exporter] GET intercepted. Returning our proxy.')
-      return createProxy(currentPeerConnection)
+      console.log('[webrtc-exporter] GET intercepted. Returning our proxy function.')
+      return RTCPeerConnectionProxy
     },
     set: function (newValue) {
-      console.log('[webrtc-exporter] SET intercepted. A script (webrtc-adapter) is applying a shim. We will use it.')
-      currentPeerConnection = newValue
+      console.log('[webrtc-exporter] SET intercepted. A script (likely webrtc-adapter) is applying a shim. We will allow it and use it.')
+      activeAdapterShim = newValue
+      Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, newValue.prototype)
+      RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy
     },
-    enumerable: true,
     configurable: true
   })
 
