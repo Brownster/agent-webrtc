@@ -116,6 +116,52 @@ optionsManager.onChange((changeInfo) => {
   }
 })
 
+// Listen for long-lived connections from content scripts
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'webrtc-stats-port') {
+    return
+  }
+
+  log(`New stats port connected from tab ${port.sender?.tab?.id}`)
+
+  port.onMessage.addListener(async (msg) => {
+    if (msg.type !== 'webrtc_stats_payload') {
+      return
+    }
+
+    log('Received stats payload from port')
+
+    try {
+      const { url, id, state, values } = msg.data || {}
+      const origin = new URL(url).origin
+
+      if (state === 'closed') {
+        await sendData('DELETE', { id, origin })
+        return
+      }
+
+      const data = self.WebRTCExporterStatsFormatter.StatsFormatter.formatStats({
+        url,
+        state,
+        values,
+        agentId: options.agentId
+      })
+
+      if (data.length > 0) {
+        await sendData('POST', { id, origin }, data + '\n')
+      } else {
+        log(`No data to send for connection ${id}`)
+      }
+    } catch (error) {
+      log(`Error processing stats payload: ${error.message}`)
+    }
+  })
+
+  port.onDisconnect.addListener(() => {
+    log(`Stats port from tab ${port.sender?.tab?.id} disconnected.`)
+  })
+})
+
 // Send data to pushgateway using the new client
 async function sendData (method, { id, origin }, data) {
   const { url, username, password, gzip, job } = options

@@ -17,6 +17,17 @@ if (window.location.protocol.startsWith('http')) {
   // Always log injection to verify it's working
   console.log('[webrtc-internal-exporter:content-script] Content script loaded on', window.location.origin)
 
+  // Create a long-lived connection to the background script for stats relaying
+  const port = chrome.runtime.connect({ name: 'webrtc-stats-port' })
+
+  port.onDisconnect.addListener(() => {
+    if (chrome.runtime.lastError) {
+      console.log(`[webrtc-internal-exporter:content-script] Port disconnected due to an error: ${chrome.runtime.lastError.message}`)
+    } else {
+      console.log('[webrtc-internal-exporter:content-script] Port disconnected normally.')
+    }
+  })
+
   const injectScript = (filePath) => {
     const script = document.createElement('script')
     script.setAttribute('type', 'text/javascript')
@@ -142,18 +153,11 @@ if (window.location.protocol.startsWith('http')) {
       console.log('[webrtc-internal-exporter:content-script] Caught stats from page, relaying to background.')
       log('peer-connection-stats', { url, id, state, values })
       try {
-        chrome.runtime
-          .sendMessage({
-            event: 'peer-connection-stats',
-            data: { url, id, state, values }
-          })
-          .then(() => {
-            console.log('[webrtc-internal-exporter:content-script] Fired off stats to background.')
-          })
-          .catch((error) => {
-            console.error('[webrtc-internal-exporter:content-script] Error sending stats to background:', error.message)
-            log(`error: ${error.message}`)
-          })
+        port.postMessage({
+          type: 'webrtc_stats_payload',
+          data: { url, id, state, values }
+        })
+        console.log('[webrtc-internal-exporter:content-script] Relayed stats via persistent port.')
       } catch (error) {
         console.error('[webrtc-internal-exporter:content-script] Failed to send message, context was likely invalidated:', error)
         log(`error: ${error.message}`)
@@ -170,23 +174,16 @@ if (window.location.protocol.startsWith('http')) {
         console.log('[webrtc-internal-exporter:content-script] Received peer-connection-stats', { url, id, state, valuesCount: values?.length })
         log('peer-connection-stats', { url, id, state, values })
         try {
-          chrome.runtime
-            .sendMessage({
-              event: 'peer-connection-stats',
-              data: {
-                url,
-                id,
-                state,
-                values
-              }
-            })
-            .then(() => {
-              console.log('[webrtc-internal-exporter:content-script] Fired off stats to background.')
-            })
-            .catch((error) => {
-              console.error('[webrtc-internal-exporter:content-script] Error sending stats to background:', error.message)
-              log(`error: ${error.message}`)
-            })
+          port.postMessage({
+            type: 'webrtc_stats_payload',
+            data: {
+              url,
+              id,
+              state,
+              values
+            }
+          })
+          console.log('[webrtc-internal-exporter:content-script] Relayed stats via persistent port.')
         } catch (error) {
           console.error('[webrtc-internal-exporter:content-script] Failed to send message, context was likely invalidated:', error)
           log(`error: ${error.message}`)
