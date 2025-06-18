@@ -93,7 +93,7 @@
 
   console.log('[webrtc-internal-exporter:override] Override script loaded, hooking RTCPeerConnection')
 
-  const OriginalRTCPeerConnection = window.RTCPeerConnection
+  let OriginalRTCPeerConnection = window.RTCPeerConnection
   if (!OriginalRTCPeerConnection) {
     console.error('[webrtc-internal-exporter:override] window.RTCPeerConnection is not available.')
     return
@@ -113,8 +113,9 @@
       console.log('[webrtc-internal-exporter:override] A script is GETTING window.RTCPeerConnection. Returning our proxy.')
       return RTCPeerConnectionProxy
     },
-    set () {
-      console.warn('[webrtc-internal-exporter:override] A script is trying to SET window.RTCPeerConnection. We are ignoring it.')
+    set (newValue) {
+      console.log('[webrtc-internal-exporter:override] A script (likely webrtc-adapter) is SETTING window.RTCPeerConnection. We will re-wrap their version.')
+      OriginalRTCPeerConnection = newValue
     },
     enumerable: true,
     configurable: true
