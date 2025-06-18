@@ -73,10 +73,6 @@
         "*://*.meet.google.com/*",
         "*://*.awsapps.com/*",
         "*://*.my.connect.aws/*",
-<<<<<<< 3yymfc-codex/update-manifest-to-allow-pure.cloud-domain
-        "*://*.pure.cloud/*"
-      ],
-=======
         "*://*.mypurecloud.com/*",
         "*://*.genesys.com/*",
         "*://*.mypurecloud.com.au/*",
@@ -85,7 +81,6 @@
         "*://*.mypurecloud.jp/*",
         "*://*.pure.cloud/*"
       ],
->>>>>>> master
       "js": ["content-script.js"],
       "run_at": "document_start"
     }
