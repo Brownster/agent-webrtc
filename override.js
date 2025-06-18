@@ -60,16 +60,18 @@ class WebrtcInternalsExporter {
             ['peer-connection', ...this.enabledStats].indexOf(v.type) !== -1
         )
         WebrtcInternalsExporter.log(`Collected ${allStats.length} total stats, filtered to ${values.length} matching types`)
-        window.postMessage(
-          {
-            event: 'webrtc-internal-exporter:peer-connection-stats',
-            url: window.location.href,
-            id,
-            state: pc.connectionState,
-            values
-          },
-          [values]
+        WebrtcInternalsExporter.log('Dispatching stats to content script')
+        const payload = {
+          url: window.location.href,
+          id,
+          state: pc.connectionState,
+          values
+        }
+        const event = new CustomEvent(
+          'webrtc-internal-exporter:stats-from-page',
+          { detail: payload }
         )
+        window.dispatchEvent(event)
       } catch (error) {
         WebrtcInternalsExporter.log(`collectStats error: ${error.message}`)
       }

@@ -136,7 +136,28 @@ if (window.location.protocol.startsWith('http')) {
       }
     })
 
-    // Handle stats messages.
+    // Relay stats from injected page context to the background script
+    window.addEventListener('webrtc-internal-exporter:stats-from-page', async (event) => {
+      const { url, id, state, values } = event.detail || {}
+      console.log('[webrtc-internal-exporter:content-script] Caught stats from page, relaying to background.')
+      log('peer-connection-stats', { url, id, state, values })
+      try {
+        const response = await chrome.runtime.sendMessage({
+          event: 'peer-connection-stats',
+          data: { url, id, state, values }
+        })
+        if (response?.error) {
+          log(`error: ${response.error}`)
+        } else {
+          console.log('[webrtc-internal-exporter:content-script] Successfully sent stats to background')
+        }
+      } catch (error) {
+        console.error('[webrtc-internal-exporter:content-script] Error sending stats to background:', error.message)
+        log(`error: ${error.message}`)
+      }
+    }, false)
+
+    // Handle messages from override script (options and legacy stats events)
     window.addEventListener('message', async (message) => {
       const { event, url, id, state, values } = message.data
       if (event === 'webrtc-internal-exporter:ready') {
