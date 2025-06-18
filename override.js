@@ -1,80 +1,94 @@
-(function() {
-    'use strict';
-    console.log('[webrtc-exporter:override] Unified override script running.');
+(function () {
+    'use strict'
+    const LOG_PREFIX = '[webrtc-exporter:override]'
+    console.log(LOG_PREFIX, 'Unified override script running.')
 
-    const OriginalRTCPeerConnection = window.RTCPeerConnection;
+    // --- State ---
+    const OriginalRTCPeerConnection = window.RTCPeerConnection
     if (!OriginalRTCPeerConnection) {
-        console.warn('[webrtc-exporter:override] window.RTCPeerConnection not found. Aborting.');
-        return;
+        console.warn(LOG_PREFIX, 'window.RTCPeerConnection not found. Aborting.')
+        return
     }
 
-    let activeAdapterShim = OriginalRTCPeerConnection;
+    let activeAdapterShim = OriginalRTCPeerConnection
+    let isContentScriptReady = false
+    const statsQueue = []
 
-    const overrideId = Math.random().toString(36).substr(2, 9);
-
-    function post(type, detail) {
+    // --- Communication ---
+    function postToContentScript (type, detail) {
         try {
             window.postMessage({
                 source: 'webrtc-exporter-override',
                 type,
                 detail
-            }, '*');
+            }, '*')
         } catch (e) {
-            console.error('[webrtc-exporter:override] postMessage failed:', e);
+            console.error(LOG_PREFIX, 'postMessage failed:', e)
         }
     }
 
-    const RTCPeerConnectionProxy = function(...args) {
-        console.log(`[webrtc-exporter:override ${overrideId}] PROXY CONSTRUCTOR CALLED.`);
+    function flushQueue () {
+        while (statsQueue.length > 0) {
+            const item = statsQueue.shift()
+            postToContentScript(item.type, item.detail)
+        }
+    }
 
-        const pc = new activeAdapterShim(...args);
+    window.addEventListener('message', (event) => {
+        if (event.source === window && event.data && event.data.type === 'CS_READY') {
+            console.log(LOG_PREFIX, 'Content script is ready. Flushing queue.')
+            isContentScriptReady = true
+            flushQueue()
+        }
+    })
 
-        post('PC_CREATED', {
-            peerConnectionId: pc.id || (pc.id = `pc_${Math.random().toString(36).substr(2, 9)}`)
-        });
+    function sendOrQueue (type, detail) {
+        if (isContentScriptReady) {
+            postToContentScript(type, detail)
+        } else {
+            console.log(LOG_PREFIX, 'Content script not ready. Queuing message:', type)
+            statsQueue.push({ type, detail })
+        }
+    }
 
-        const originalGetStats = pc.getStats.bind(pc);
+    // --- The Proxy ---
+    const RTCPeerConnectionProxy = function (...args) {
+        console.log(LOG_PREFIX, 'PROXY CONSTRUCTOR CALLED.')
+        const pc = new activeAdapterShim(...args)
+
+        const peerConnectionId = pc.id || (pc.id = `pc_${Math.random().toString(36).substr(2, 9)}`)
+
+        const originalGetStats = pc.getStats.bind(pc)
         pc.getStats = (...getStatsArgs) => {
             return originalGetStats(...getStatsArgs).then(stats => {
-                const report = [];
-                stats.forEach(value => report.push(value));
-                post('STATS_REPORT', { peerConnectionId: pc.id, report });
-                return stats;
-            });
-        };
+                const report = []
+                stats.forEach(value => report.push(value))
+                sendOrQueue('STATS_REPORT', { peerConnectionId, report })
+                return stats
+            })
+        }
 
-        const originalSetter = pc.__lookupSetter__('oniceconnectionstatechange');
-        Object.defineProperty(pc, 'oniceconnectionstatechange', {
-            set: function(callback) {
-                const newCallback = function(...cbArgs) {
-                    post('STATE_CHANGE', { peerConnectionId: pc.id, state: pc.iceConnectionState });
-                    if (callback) {
-                        callback.apply(pc, cbArgs);
-                    }
-                };
-                if (originalSetter) {
-                    originalSetter.call(pc, newCallback);
-                }
-            },
-            get: pc.__lookupGetter__('oniceconnectionstatechange')
-        });
+        pc.addEventListener('iceconnectionstatechange', () => {
+            sendOrQueue('STATE_CHANGE', { peerConnectionId, state: pc.iceConnectionState })
+        })
 
-        return pc;
-    };
+        sendOrQueue('PC_CREATED', { peerConnectionId })
+        return pc
+    }
 
+    // --- Interception Logic ---
     Object.defineProperty(window, 'RTCPeerConnection', {
-        get: function() {
-            console.log(`[webrtc-exporter:override ${overrideId}] GET intercepted. Returning proxy.`);
-            return RTCPeerConnectionProxy;
+        get: function () {
+            return RTCPeerConnectionProxy
         },
-        set: function(newValue) {
-            console.log(`[webrtc-exporter:override ${overrideId}] SET intercepted. Adapting to shim.`);
-            activeAdapterShim = newValue;
-            Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, newValue.prototype);
-            RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy;
+        set: function (newValue) {
+            console.log(LOG_PREFIX, 'SET intercepted. Adapting to shim.')
+            activeAdapterShim = newValue
+            Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, newValue.prototype)
+            RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy
         },
         configurable: true
-    });
+    })
 
-    console.log(`[webrtc-exporter:override ${overrideId}] Override complete. Awaiting calls.`);
-})();
+    console.log(LOG_PREFIX, 'Override complete. Awaiting calls.')
+})()

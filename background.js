@@ -1,4 +1,4 @@
-/* global chrome, importScripts */
+/* global importScripts */
 
 // Import shared modules
 importScripts('assets/pako.min.js')
