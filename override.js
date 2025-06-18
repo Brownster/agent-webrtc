@@ -92,12 +92,12 @@
 
   // Store the original native implementation and keep track of any adapter-applied shim
   const OriginalRTCPeerConnection = NativeRTCPeerConnection
-  let activeAdapterShim = OriginalRTCPeerConnection
+  let ActiveAdapterShim = OriginalRTCPeerConnection
 
   // Proxy implemented as a normal function so its prototype remains writable
   const RTCPeerConnectionProxy = function (...args) {
     console.log('[webrtc-exporter] PROXY CONSTRUCTOR CALLED. Using the latest shim/original.')
-    const pc = new activeAdapterShim(...args)
+    const pc = new ActiveAdapterShim(...args)
     webrtcInternalsExporter.add(pc)
     return pc
   }
@@ -113,7 +113,7 @@
     },
     set: function (newValue) {
       console.log('[webrtc-exporter] SET intercepted. A script (likely webrtc-adapter) is applying a shim. We will allow it and use it.')
-      activeAdapterShim = newValue
+      ActiveAdapterShim = newValue
       Object.setPrototypeOf(RTCPeerConnectionProxy.prototype, newValue.prototype)
       RTCPeerConnectionProxy.prototype.constructor = RTCPeerConnectionProxy
     },
