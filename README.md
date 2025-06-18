@@ -77,7 +77,7 @@ Access the extension options by:
 - **Storage Circuit Breaker** (`shared/storage-circuit-breaker.js`): Handles storage operation reliability
 - **Pushgateway Client** (`background/pushgateway-client.js`): Manages metric export with retry logic
 - **Connection Tracker** (`background/connection-tracker.js`): Monitors WebRTC connection lifecycle
-- **Content Scripts** (`content-script-start.js`, `content-script-end.js`): Injected into pages at start and idle phases to detect WebRTC usage
+- **Content Script** (`content-script.js`): Injected at document_start to detect WebRTC usage
 - **Override Script** (`override.js`): Hooks into RTCPeerConnection to capture statistics
 - **Shared Modules** (`shared/`): Centralized configuration, domain management, and storage
 
@@ -158,8 +158,7 @@ npm run test:ci         # CI mode with full reporting
 │   ├── storage.js          # Storage abstraction with circuit breaker
 │   ├── storage-circuit-breaker.js  # Storage fault tolerance
 │   └── lifecycle-manager.js        # Resource lifecycle management
-├── content-script-start.js # Injection script (runs at document_start)
-├── content-script-end.js   # Main content script for stats and messaging
+├── content-script.js       # Injects override and relays stats
 ├── override.js            # WebRTC hook injection script
 ├── popup.html/js          # Extension popup UI
 ├── options.html/js        # Options page UI

@@ -18,15 +18,12 @@ const PACKAGE_JSON = require(path.join(ROOT_DIR, 'package.json'))
 const INCLUDE_FILES = [
   'manifest.json',
   'background.js',
-  'content-script-start.js',
-  'content-script-end.js',
+  'content-script.js',
   'options.html',
   'options.js',
   'popup.html',
   'popup.js',
   'override.js',
-  'override-stage1.js',
-  'override-stage2.js',
   'LICENSE',
   'README.md'
 ]
