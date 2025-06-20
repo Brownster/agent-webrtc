@@ -116,7 +116,7 @@ constructor () {
 ### 2.2 RTCPeerConnection Hijacking
 **Function: RTCPeerConnection Property Override**
 ```javascript
-// override.js:96-124
+// override.js:86-99
 console.log('[webrtc-internal-exporter:override] Override script loaded, hooking RTCPeerConnection')
 
 const OriginalRTCPeerConnection = window.RTCPeerConnection
@@ -180,7 +180,7 @@ const pc = new RTCPeerConnection(config)  // This hits our proxy!
 ### 3.2 Proxy Intercepts Creation
 **Function: RTCPeerConnectionProxy**
 ```javascript
-// override.js:104-109
+// override.js:90-98
 const RTCPeerConnectionProxy = function (...args) {
   WebrtcInternalsExporter.log('RTCPeerConnection', args)
   const pc = new OriginalRTCPeerConnection(...args) // Create real peer connection
@@ -213,7 +213,7 @@ add (pc) {
 ### 3.4 First Stats Collection
 **Function: `collectStats()`**
 ```javascript
-// override.js:54-91
+// override.js:48-83
 async collectStats (id) {
   const pc = this.peerConnections.get(id)
   if (!pc) return
@@ -235,11 +235,16 @@ async collectStats (id) {
         state: pc.connectionState,
         values
       }
-      const event = new CustomEvent(
-        'webrtc-internal-exporter:stats-from-page',
-        { detail: payload }
+      window.postMessage(
+        {
+          event: 'webrtc-internal-exporter:peer-connection-stats',
+          url: window.location.href,
+          id,
+          state: pc.connectionState,
+          values
+        },
+        [values]
       )
-      window.dispatchEvent(event)
     } catch (error) {
       WebrtcInternalsExporter.log(`collectStats error: ${error.message}`)
     }
@@ -520,7 +525,7 @@ async deleteMetrics (params) {
 5. App creates connection → `RTCPeerConnectionProxy()` → `add()` → `collectStats()`
 
 **During Call (every 2 seconds):**
-1. `collectStats()` → `pc.getStats()` → `CustomEvent` dispatch
+1. `collectStats()` → `pc.getStats()` → `window.postMessage()`
 2. Content script event listener → `chrome.runtime.sendMessage()`
 3. `handlePeerConnectionStats()` → `formatStats()` → `sendData()`
 4. `pushgatewayClient.sendData()` → HTTP POST to Pushgateway

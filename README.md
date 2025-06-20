@@ -70,7 +70,7 @@ Access the extension options by:
 
 ### **Core Components**
 
-- **Main Orchestrator** (`background/index.js`): Coordinates all modules and handles initialization
+- **Main Orchestrator** (`background.js`): Coordinates all modules and handles initialization
 - **Network Circuit Breaker** (`background/network-circuit-breaker.js`): Manages HTTP request fault tolerance
 - **Storage Circuit Breaker** (`shared/storage-circuit-breaker.js`): Handles storage operation reliability
 - **Pushgateway Client** (`background/pushgateway-client.js`): Manages metric export with retry logic
@@ -143,8 +143,9 @@ npm run test:ci         # CI mode with full reporting
 ### Project Structure
 ```
 ├── manifest.json           # Extension manifest
+├── background.js          # Main orchestrator service worker
 ├── background/             # Background script modules
-│   ├── index.js            # Main orchestrator
+│   ├── index.js            # Legacy orchestrator for tests
 │   ├── network-circuit-breaker.js  # Network fault tolerance
 │   ├── pushgateway-client.js       # Metric export with retry
 │   ├── connection-tracker.js       # WebRTC lifecycle management
@@ -165,7 +166,7 @@ npm run test:ci         # CI mode with full reporting
 ├── options.html/js        # Options page UI
 ├── tests/                 # Test suite (15 files, 80%+ coverage)
 │   ├── modules/           # Jest-compatible module wrappers
-│   ├── unit/              # Unit tests (37 test files)
+│   ├── unit/              # Unit tests (15 test files)
 │   ├── utils/             # Test utilities and helpers
 │   ├── setup.js           # Jest test setup
 │   └── setupAfterEnv.js   # Jest environment configuration
