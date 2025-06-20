@@ -20,7 +20,7 @@ This extension captures WebRTC statistics from RTCPeerConnection objects in web 
 - **Key Functions**:
   - Hooks into `window.RTCPeerConnection` constructor
   - Periodically collects WebRTC statistics
-  - Dispatches stats events to content script
+  - Posts stats messages to content script
 
 ### 3. Background Script (`background.js`)
 - **Purpose**: Processes stats and sends to Pushgateway
@@ -48,7 +48,7 @@ The content script injects the override script into the page after a short delay
 The override script replaces the native RTCPeerConnection constructor:
 
 ```javascript
-// override.js:111-121
+// override.js:86-99
 Object.defineProperty(window, 'RTCPeerConnection', {
   get () {
     console.log('[webrtc-internal-exporter:override] A script is GETTING window.RTCPeerConnection. Returning our proxy.')
@@ -65,7 +65,7 @@ Object.defineProperty(window, 'RTCPeerConnection', {
 The proxy constructor intercepts all RTCPeerConnection creation:
 
 ```javascript
-// override.js:104-109
+// override.js:90-98
 const RTCPeerConnectionProxy = function (...args) {
   WebrtcInternalsExporter.log('RTCPeerConnection', args)
   const pc = new OriginalRTCPeerConnection(...args) // eslint-disable-line new-cap
@@ -99,7 +99,7 @@ add (pc) {
 The extension periodically collects WebRTC statistics:
 
 ```javascript
-// override.js:54-91
+// override.js:48-83
 async collectStats (id) {
   const pc = this.peerConnections.get(id)
   if (!pc) return
@@ -122,11 +122,16 @@ async collectStats (id) {
         state: pc.connectionState,
         values
       }
-      const event = new CustomEvent(
-        'webrtc-internal-exporter:stats-from-page',
-        { detail: payload }
+      window.postMessage(
+        {
+          event: 'webrtc-internal-exporter:peer-connection-stats',
+          url: window.location.href,
+          id,
+          state: pc.connectionState,
+          values
+        },
+        [values]
       )
-      window.dispatchEvent(event)
     } catch (error) {
       WebrtcInternalsExporter.log(`collectStats error: ${error.message}`)
     }
@@ -338,7 +343,7 @@ async sendData ({
 2. **Override Script Injection**: Content script injects override script into page context
 3. **RTCPeerConnection Interception**: Override script hooks into RTCPeerConnection constructor
 4. **Stats Collection**: Periodically calls `getStats()` on tracked peer connections
-5. **Event Dispatch**: Dispatches custom events with collected stats
+5. **Event Dispatch**: Posts stats using window.postMessage
 6. **Message Relay**: Content script relays stats to background script via Chrome messaging
 7. **Stats Processing**: Background script formats stats to Prometheus format
 8. **HTTP Request**: Sends formatted metrics to Pushgateway endpoint

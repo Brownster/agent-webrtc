@@ -41,11 +41,11 @@ graph LR
         direction LR
         subgraph Override Script
             Loop_Collect["collectStats()"] --> Loop_GetStats["pc.getStats()"]
-            Loop_GetStats --> Loop_Dispatch["Dispatches CustomEvent"]
+            Loop_GetStats --> Loop_Dispatch["Posts message"]
             Loop_GetStats --> Loop_Schedule["setTimeout()"]
         end
         subgraph Content Script
-            Loop_Catch["Catches Event"] --> Loop_Relay["chrome.runtime.sendMessage()"]
+            Loop_Catch["Receives message"] --> Loop_Relay["chrome.runtime.sendMessage()"]
         end
         subgraph Background Script
             Loop_Receive["Receives stats"] --> Loop_Format["Formats stats"] --> Loop_Send["sendData('POST', ...)"]
