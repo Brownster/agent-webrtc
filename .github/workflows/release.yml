@@ -33,6 +33,8 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
@@ -55,6 +57,7 @@ jobs:
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       
     - name: Create Release
+      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
