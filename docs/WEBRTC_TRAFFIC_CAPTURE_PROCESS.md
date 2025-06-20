@@ -45,34 +45,21 @@ The content script injects the override script into the page after a short delay
 
 ### Step 2: RTCPeerConnection Interception
 
-The override script replaces the native RTCPeerConnection constructor:
+The override script wraps the native RTCPeerConnection constructor with a Proxy:
 
 ```javascript
-// override.js:86-99
-Object.defineProperty(window, 'RTCPeerConnection', {
-  get () {
-    console.log('[webrtc-internal-exporter:override] A script is GETTING window.RTCPeerConnection. Returning our proxy.')
-    return RTCPeerConnectionProxy
-  },
-  set () {
-    console.warn('[webrtc-internal-exporter:override] A script is trying to SET window.RTCPeerConnection. We are ignoring it.')
-  },
-  enumerable: true,
-  configurable: true
+// override.js:89-101
+window.RTCPeerConnection = new Proxy(window.RTCPeerConnection, {
+  construct (target, argumentsList) {
+    WebrtcInternalsExporter.log('RTCPeerConnection', argumentsList)
+    const pc = new target(...argumentsList) // eslint-disable-line new-cap
+    webrtcInternalsExporter.add(pc)
+    return pc
+  }
 })
 ```
 
-The proxy constructor intercepts all RTCPeerConnection creation:
-
-```javascript
-// override.js:90-98
-const RTCPeerConnectionProxy = function (...args) {
-  WebrtcInternalsExporter.log('RTCPeerConnection', args)
-  const pc = new OriginalRTCPeerConnection(...args) // eslint-disable-line new-cap
-  webrtcInternalsExporter.add(pc)
-  return pc
-}
-```
+The Proxy's `construct` handler intercepts all `RTCPeerConnection` creation events and registers each connection with the exporter:
 
 ### Step 3: Peer Connection Registration
 
