@@ -137,29 +137,24 @@ async collectStats (id) {
 The content script listens for stats events and relays them to the background script:
 
 ```javascript
-// content-script.js:140-161
-window.addEventListener('webrtc-internal-exporter:stats-from-page', (event) => {
-  const { url, id, state, values } = event.detail || {}
-  console.log('[webrtc-internal-exporter:content-script] Caught stats from page, relaying to background.')
-  log('peer-connection-stats', { url, id, state, values })
-  try {
-    chrome.runtime
-      .sendMessage({
+// content-script.js:138-168
+window.addEventListener('message', async (message) => {
+  const { event, url, id, state, values } = message.data
+  if (event === 'webrtc-internal-exporter:peer-connection-stats') {
+    console.log('[webrtc-internal-exporter:content-script] Caught stats from page, relaying to background.')
+    log('peer-connection-stats', { url, id, state, values })
+    try {
+      await chrome.runtime.sendMessage({
         event: 'peer-connection-stats',
         data: { url, id, state, values }
       })
-      .then(() => {
-        console.log('[webrtc-internal-exporter:content-script] Fired off stats to background.')
-      })
-      .catch((error) => {
-        console.error('[webrtc-internal-exporter:content-script] Error sending stats to background:', error.message)
-        log(`error: ${error.message}`)
-      })
-  } catch (error) {
-    console.error('[webrtc-internal-exporter:content-script] Failed to send message, context was likely invalidated:', error)
-    log(`error: ${error.message}`)
+      console.log('[webrtc-internal-exporter:content-script] Fired off stats to background.')
+    } catch (error) {
+      console.error('[webrtc-internal-exporter:content-script] Error sending stats to background:', error.message)
+      log(`error: ${error.message}`)
+    }
   }
-}, false)
+})
 ```
 
 ### Step 6: Background Processing
