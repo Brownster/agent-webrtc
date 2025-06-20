@@ -120,8 +120,8 @@ function updateManifestVersion () {
 }
 
 function createZipPackage () {
-  const version = PACKAGE_JSON.version
-  const zipName = `webrtc-stats-exporter-v${version}.zip`
+  // Use a consistent name expected by CI and release workflows
+  const zipName = 'webrtc-stats-exporter-pro.zip'
   const zipPath = path.join(ROOT_DIR, zipName)
 
   log(`Creating zip package: ${zipName}`)
