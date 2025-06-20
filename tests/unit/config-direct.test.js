@@ -15,6 +15,9 @@ describe('Config Module (Direct)', () => {
       expect(configModule.DEFAULT_OPTIONS.gzip).toBe(false);
       expect(configModule.DEFAULT_OPTIONS.job).toBe("webrtc-internals-exporter");
       expect(configModule.DEFAULT_OPTIONS.agentId).toBe("");
+      expect(configModule.DEFAULT_OPTIONS.useProxy).toBe(false);
+      expect(configModule.DEFAULT_OPTIONS.proxyUrl).toBe("");
+      expect(configModule.DEFAULT_OPTIONS.apiKey).toBe("");
       expect(configModule.DEFAULT_OPTIONS.enabledOrigins).toEqual({});
       expect(Array.isArray(configModule.DEFAULT_OPTIONS.enabledStats)).toBe(true);
     });

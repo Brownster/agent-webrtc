@@ -3,6 +3,8 @@
 // Use direct references to shared modules to avoid const declaration conflicts
 
 let currentOptions = {}
+const useProxyCheckbox = document.getElementById('useProxy')
+const proxyOptionsDiv = document.getElementById('proxyOptions')
 
 // Load options from storage
 async function loadOptions () {
@@ -17,6 +19,14 @@ async function loadOptions () {
     document.getElementById('job').value = currentOptions.job || 'webrtc-internals-exporter'
     document.getElementById('agentId').value = currentOptions.agentId || ''
     document.getElementById('gzip').checked = currentOptions.gzip || false
+
+    useProxyCheckbox.checked = currentOptions.useProxy || false
+    document.getElementById('proxyUrl').value = currentOptions.proxyUrl || ''
+    document.getElementById('apiKey').value = currentOptions.apiKey || ''
+    proxyOptionsDiv.style.display = useProxyCheckbox.checked ? 'block' : 'none'
+
+    // Ensure visibility state is correct
+    useProxyCheckbox.dispatchEvent(new Event('change'))
 
     // Set enabled stats checkboxes
     const enabledStats = Array.isArray(currentOptions.enabledStats)
@@ -52,6 +62,9 @@ async function saveOptions () {
       updateInterval: parseInt(formData.get('updateInterval')),
       job: formData.get('job'),
       agentId: formData.get('agentId'),
+      useProxy: formData.get('useProxy') === 'on',
+      proxyUrl: formData.get('proxyUrl'),
+      apiKey: formData.get('apiKey'),
       gzip: formData.has('gzip'),
       enabledStats,
       enabledOrigins: currentOptions.enabledOrigins || {}
@@ -157,6 +170,10 @@ function renderDomainsList () {
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
   loadOptions()
+
+  useProxyCheckbox.addEventListener('change', () => {
+    proxyOptionsDiv.style.display = useProxyCheckbox.checked ? 'block' : 'none'
+  })
 
   document.getElementById('optionsForm').addEventListener('submit', (e) => {
     e.preventDefault()
