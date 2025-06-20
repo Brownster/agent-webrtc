@@ -42,6 +42,9 @@ class PushgatewayClient {
     id,
     username,
     password,
+    useProxy = false,
+    proxyUrl = '',
+    apiKey = '',
     gzip = false,
     data,
     statsCallback
@@ -55,6 +58,9 @@ class PushgatewayClient {
         id,
         username,
         password,
+        useProxy,
+        proxyUrl,
+        apiKey,
         gzip,
         data,
         statsCallback
@@ -69,6 +75,9 @@ class PushgatewayClient {
       id,
       username,
       password,
+      useProxy,
+      proxyUrl,
+      apiKey,
       gzip,
       data,
       statsCallback
@@ -87,6 +96,9 @@ class PushgatewayClient {
     id,
     username,
     password,
+    useProxy = false,
+    proxyUrl = '',
+    apiKey = '',
     gzip = false,
     data,
     statsCallback
@@ -97,13 +109,24 @@ class PushgatewayClient {
 
     try {
       // Validate required parameters
-      this._validateParams({ method, url, job, id })
+      this._validateParams({ method, url, job, id, useProxy, proxyUrl })
 
       // Build request URL
-      const requestUrl = this._buildUrl(url, job, id)
+      const requestUrl = useProxy
+        ? proxyUrl.replace('{job}', encodeURIComponent(job)).replace('{id}', encodeURIComponent(id))
+        : this._buildUrl(url, job, id)
 
       // Prepare headers
-      const headers = this._buildHeaders({ username, password, gzip, data })
+      const headers = this._buildHeaders({
+        username: useProxy ? undefined : username,
+        password: useProxy ? undefined : password,
+        gzip,
+        data
+      })
+
+      if (useProxy && apiKey) {
+        headers['X-API-Key'] = apiKey
+      }
 
       // Compress data if needed
       const requestBody = await this._prepareBody(method, data, gzip)
@@ -201,11 +224,11 @@ class PushgatewayClient {
    * Validate required parameters
    * @private
    */
-  _validateParams ({ method, url, job, id }) {
+  _validateParams ({ method, url, job, id, useProxy, proxyUrl }) {
     if (!method || !['POST', 'DELETE'].includes(method)) {
       throw new Error('Method must be POST or DELETE')
     }
-    if (!url || typeof url !== 'string') {
+    if (!useProxy && (!url || typeof url !== 'string')) {
       throw new Error('URL is required and must be a string')
     }
     if (!job || typeof job !== 'string') {
@@ -213,6 +236,9 @@ class PushgatewayClient {
     }
     if (!id || typeof id !== 'string') {
       throw new Error('Peer connection ID is required and must be a string')
+    }
+    if (useProxy && (!proxyUrl || typeof proxyUrl !== 'string')) {
+      throw new Error('Proxy URL is required when useProxy is true')
     }
   }
 

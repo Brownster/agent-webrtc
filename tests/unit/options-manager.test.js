@@ -45,6 +45,9 @@ describe('OptionsManager', () => {
         gzip: false,
         job: 'webrtc-internals-exporter',
         agentId: '',
+        useProxy: false,
+        proxyUrl: '',
+        apiKey: '',
         enabledOrigins: {},
         enabledStats: ['inbound-rtp', 'remote-inbound-rtp', 'outbound-rtp']
       },

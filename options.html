@@ -162,6 +162,23 @@
                 </small>
             </div>
 
+            <div class="form-group">
+                <input type="checkbox" id="useProxy" name="useProxy">
+                <label for="useProxy" style="display: inline;">Use mTLS Proxy Server</label>
+            </div>
+
+            <div id="proxyOptions" style="display: none;">
+                <div class="form-group">
+                    <label for="proxyUrl">Proxy URL:</label>
+                    <input type="url" id="proxyUrl" name="proxyUrl" placeholder="https://your-proxy.com/metrics/job/{job}/instance/{id}">
+                </div>
+
+                <div class="form-group">
+                    <label for="apiKey">API Key:</label>
+                    <input type="password" id="apiKey" name="apiKey" placeholder="Enter the API key provided to you">
+                </div>
+            </div>
+
             <div class="checkbox-group">
                 <input type="checkbox" id="gzip" name="gzip">
                 <label for="gzip">Use gzip compression</label>
