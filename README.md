@@ -164,6 +164,8 @@ npm run test:ci         # CI mode with full reporting
 ├── override.js            # WebRTC hook injection script
 ├── popup.html/js          # Extension popup UI
 ├── options.html/js        # Options page UI
+├── docs/                  # Documentation
+├── scripts/               # Build and packaging scripts
 ├── tests/                 # Test suite (15 files, 80%+ coverage)
 │   ├── modules/           # Jest-compatible module wrappers
 │   ├── unit/              # Unit tests (15 test files)
