@@ -204,6 +204,11 @@ The project includes GitHub Actions workflows for:
 - **Build Validation**: Extension packaging and artifact creation
 - **Coverage Reporting**: Automated coverage tracking and reporting
 
+To publish releases from GitHub Actions, add a repository secret named
+`GH_RELEASE_TOKEN` containing a personal access token with `repo`
+permissions. The release workflow uses this token when invoking
+`actions/create-release`.
+
 ## 🎯 Enterprise Ready
 
 ### **Reliability Features**
