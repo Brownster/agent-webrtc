@@ -11,6 +11,12 @@ const TARGET_DOMAINS = [
   "meet.google.com", 
   "awsapps.com",
   "my.connect.aws",
+  "mypurecloud.com",
+  "genesys.com",
+  "mypurecloud.com.au",
+  "mypurecloud.ie", 
+  "mypurecloud.de",
+  "mypurecloud.jp",
   "pure.cloud"
 ];
 
@@ -19,7 +25,15 @@ const DOMAIN_CATEGORIES = {
   MICROSOFT: ["teams.microsoft.com"],
   GOOGLE: ["meet.google.com"],
   AMAZON: ["awsapps.com", "my.connect.aws"],
-  GENESYS: ["pure.cloud"],
+  GENESYS: [
+    "mypurecloud.com",
+    "genesys.com", 
+    "mypurecloud.com.au",
+    "mypurecloud.ie",
+    "mypurecloud.de", 
+    "mypurecloud.jp",
+    "pure.cloud"
+  ],
 };
 
 /**

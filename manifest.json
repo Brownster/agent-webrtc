@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WebRTC Stats Exporter Pro (Auto)",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Automatically captures WebRTC stats from specified platforms and pushes them to a Prometheus Pushgateway.",
   "permissions": [
     "storage",
@@ -15,6 +15,12 @@
     "*://meet.google.com/*",
     "*://*.awsapps.com/connect/ccp*",
     "*://*.my.connect.aws/*",
+    "*://*.mypurecloud.com/*",
+    "*://*.genesys.com/*",
+    "*://*.mypurecloud.com.au/*",
+    "*://*.mypurecloud.ie/*",
+    "*://*.mypurecloud.de/*",
+    "*://*.mypurecloud.jp/*",
     "*://*.pure.cloud/*",
     "http://localhost/*",
     "https://localhost/*",

@@ -9,6 +9,12 @@ const TARGET_DOMAINS = [
   'meet.google.com',
   'awsapps.com',
   'my.connect.aws',
+  'mypurecloud.com',
+  'genesys.com',
+  'mypurecloud.com.au',
+  'mypurecloud.ie',
+  'mypurecloud.de',
+  'mypurecloud.jp',
   'pure.cloud'
 ]
 
@@ -18,6 +24,12 @@ const DOMAIN_CATEGORIES = {
   GOOGLE: ['meet.google.com'],
   AMAZON: ['awsapps.com', 'my.connect.aws'],
   GENESYS: [
+    'mypurecloud.com',
+    'genesys.com',
+    'mypurecloud.com.au',
+    'mypurecloud.ie',
+    'mypurecloud.de',
+    'mypurecloud.jp',
     'pure.cloud'
   ]
 }
