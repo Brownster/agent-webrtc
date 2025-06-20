@@ -127,24 +127,16 @@ if (!OriginalRTCPeerConnection) {
 
 const webrtcInternalsExporter = new WebrtcInternalsExporter()
 
-const RTCPeerConnectionProxy = function (...args) {
-  WebrtcInternalsExporter.log('RTCPeerConnection', args)
-  const pc = new OriginalRTCPeerConnection(...args)
-  webrtcInternalsExporter.add(pc)
-  return pc
-}
-
-Object.defineProperty(window, 'RTCPeerConnection', {
-  get () {
-    console.log('[webrtc-internal-exporter:override] A script is GETTING window.RTCPeerConnection. Returning our proxy.')
-    return RTCPeerConnectionProxy
-  },
-  set () {
-    console.warn('[webrtc-internal-exporter:override] A script is trying to SET window.RTCPeerConnection. We are ignoring it.')
-  },
-  enumerable: true,
-  configurable: true
+const RTCPeerConnectionProxy = new Proxy(window.RTCPeerConnection, {
+  construct (target, argumentsList) {
+    WebrtcInternalsExporter.log('RTCPeerConnection', argumentsList)
+    const pc = new target(...argumentsList) // eslint-disable-line new-cap
+    webrtcInternalsExporter.add(pc)
+    return pc
+  }
 })
+
+window.RTCPeerConnection = RTCPeerConnectionProxy
 ```
 
 ### 2.3 Options Exchange
@@ -178,15 +170,17 @@ const pc = new RTCPeerConnection(config)  // This hits our proxy!
 ```
 
 ### 3.2 Proxy Intercepts Creation
-**Function: RTCPeerConnectionProxy**
+**Function: Proxy construct handler**
 ```javascript
-// override.js:90-98
-const RTCPeerConnectionProxy = function (...args) {
-  WebrtcInternalsExporter.log('RTCPeerConnection', args)
-  const pc = new OriginalRTCPeerConnection(...args) // Create real peer connection
-  webrtcInternalsExporter.add(pc)  // Register with our tracker
-  return pc
-}
+// override.js:89-101
+window.RTCPeerConnection = new Proxy(window.RTCPeerConnection, {
+  construct (target, argumentsList) {
+    WebrtcInternalsExporter.log('RTCPeerConnection', argumentsList)
+    const pc = new target(...argumentsList) // eslint-disable-line new-cap
+    webrtcInternalsExporter.add(pc)
+    return pc
+  }
+})
 ```
 
 ### 3.3 Peer Connection Registration
@@ -521,8 +515,8 @@ async deleteMetrics (params) {
 1. Chrome injects `content-script.js`
 2. `injectScript()` → `loadDomainManager()` → `sendOptions()`
 3. Override script loads → `WebrtcInternalsExporter()` constructor
-4. `Object.defineProperty()` hijacks `RTCPeerConnection`
-5. App creates connection → `RTCPeerConnectionProxy()` → `add()` → `collectStats()`
+4. Proxy wraps `RTCPeerConnection`
+5. App creates connection → Proxy `construct` handler → `add()` → `collectStats()`
 
 **During Call (every 2 seconds):**
 1. `collectStats()` → `pc.getStats()` → `window.postMessage()`

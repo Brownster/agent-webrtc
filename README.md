@@ -250,6 +250,7 @@ For issues, feature requests, or questions:
 - Open an issue on GitHub
 - Check the [troubleshooting guide](tests/README.md)
 - Review the [Developer Guide](docs/DEVELOPER_GUIDE.md)
+- Check the [mTLS proxy example](docs/mtls_proxy/README.md)
 
 ## 🙏 Acknowledgments
 

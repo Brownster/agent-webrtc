@@ -34,7 +34,7 @@ jobs:
           echo "⚠️  Critical files modified - extra validation required"
           
           # Check RTCPeerConnection interception hasn't been broken
-          if ! grep -q "Object.defineProperty.*RTCPeerConnection" override.js; then
+          if ! grep -q "new Proxy(window.RTCPeerConnection" override.js; then
             echo "❌ RTCPeerConnection interception may be broken"
             exit 1
           fi
