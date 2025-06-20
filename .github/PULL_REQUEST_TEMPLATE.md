@@ -22,7 +22,7 @@ Brief description of changes made.
 If you've modified any of these files, please verify:
 
 ### RTCPeerConnection Interception (`override.js`)
-- [ ] `Object.defineProperty(window, 'RTCPeerConnection')` still present
+- [ ] `new Proxy(window.RTCPeerConnection)` wrapping present
 - [ ] Proxy constructor calls `webrtcInternalsExporter.add(pc)`
 - [ ] Stats collection still works via `collectStats()`
 - [ ] Connection state change handlers intact
