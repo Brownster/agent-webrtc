@@ -1,0 +1,96 @@
+graph LR
+    %% Define Styles for Swimlanes
+    classDef user fill:#e6f2ff,stroke:#005a9e,stroke-width:2px;
+    classDef content fill:#e6ffed,stroke:#006421,stroke-width:2px;
+    classDef override fill:#fff5e6,stroke:#b36200,stroke-width:2px;
+    classDef background fill:#f5e6ff,stroke:#5d3780,stroke-width:2px;
+    classDef pushgateway fill:#ffebe6,stroke:#c5280c,stroke-width:2px;
+
+    %% --- PHASE 1 & 2: INITIALIZATION & HOOKING ---
+    subgraph Phase 1 & 2: Initialization & Options Exchange
+        direction LR
+        subgraph User/Browser
+            User_Start(["User navigates to site"])
+        end
+        subgraph Content Script
+            CS_Inject["Chrome injects<br>content-script.js"] --> CS_InjectOverride["injectScript('override.js')"] & CS_LoadManager["loadDomainManager()"]
+            CS_LoadManager --> CS_GetOptions["chrome.storage.sync.get()"] --> CS_SendOptions["sendOptions()"]
+        end
+        subgraph Override Script
+            OS_Load["override.js loads"] --> OS_Hijack["Hijacks RTCPeerConnection"] --> OS_Ready["Posts 'ready' message"]
+            OS_ReceiveOptions["Receives 'options' message"]
+        end
+        
+        User_Start --> CS_Inject
+        CS_InjectOverride -.-> OS_Load
+        OS_Ready -.-> CS_GetOptions
+        CS_SendOptions -.-> OS_ReceiveOptions
+    end
+
+    %% --- PHASE 3: CALL INITIATION ---
+    subgraph Phase 3: WebRTC Call Initiation
+        direction LR
+        subgraph Override Script
+            App_StartCall["Web App calls<br>new RTCPeerConnection()"] --> OS_Proxy["Proxy intercepts"]
+            OS_Proxy --> OS_AddPC["exporter.add(pc)"] --> OS_StartStats["Triggers first collectStats()"]
+        end
+    end
+
+    %% --- PHASE 4 & 5: ONGOING MONITORING (LOOP) ---
+    subgraph Phase 4 & 5: Ongoing Stats Collection
+        direction LR
+        subgraph Override Script
+            Loop_Collect["collectStats()"] --> Loop_GetStats["pc.getStats()"]
+            Loop_GetStats --> Loop_Dispatch["Dispatches CustomEvent"]
+            Loop_GetStats --> Loop_Schedule["setTimeout()"]
+        end
+        subgraph Content Script
+            Loop_Catch["Catches Event"] --> Loop_Relay["chrome.runtime.sendMessage()"]
+        end
+        subgraph Background Script
+            Loop_Receive["Receives stats"] --> Loop_Format["Formats stats"] --> Loop_Send["sendData('POST', ...)"]
+        end
+        subgraph Pushgateway
+            Loop_Push["Receives HTTP POST"]
+        end
+        
+        Loop_Dispatch -.-> Loop_Catch
+        Loop_Relay -.-> Loop_Receive
+        Loop_Send --> Loop_Push
+        Loop_Schedule --> Loop_Collect
+    end
+
+    %% --- PHASE 6: CALL TERMINATION ---
+    subgraph Phase 6: Call Termination
+        direction LR
+        subgraph Override Script
+            Term_Event["'connectionstatechange'<br>event fires: 'closed'"] --> Term_Cleanup["Local map cleanup"]
+        end
+        subgraph Background Script
+            Term_Check{"state === 'closed'?"} -- Yes --> Term_SendDelete["sendData('DELETE', ...)"]
+        end
+        subgraph Pushgateway
+            Term_ReceiveDelete["Receives HTTP DELETE"]
+        end
+        
+        Term_Event --> Term_SendFinalStats(Send final stats with 'closed' state)
+        Term_SendFinalStats -.-> Loop_Receive
+        Term_SendDelete --> Term_ReceiveDelete
+    end
+    
+    %% --- CONNECTING THE PHASES ---
+    OS_ReceiveOptions --> App_StartCall
+    OS_StartStats --> Loop_Collect
+    
+    %% Link the final stats pipeline to the termination check
+    subgraph hidden
+      Loop_Receive --> Term_Check
+    end
+    style hidden fill:none,stroke:none
+
+    %% Apply class styles to nodes
+    class User_Start user;
+    class CS_Inject,CS_InjectOverride,CS_LoadManager,CS_GetOptions,CS_SendOptions,Loop_Catch,Loop_Relay content;
+    class OS_Load,OS_Hijack,OS_Ready,OS_ReceiveOptions,App_StartCall,OS_Proxy,OS_AddPC,OS_StartStats,Loop_Collect,Loop_GetStats,Loop_Dispatch,Loop_Schedule,Term_Event,Term_Cleanup,Term_SendFinalStats override;
+    class Loop_Receive,Loop_Format,Loop_Send,Term_Check,Term_SendDelete background;
+    class Loop_Push,Term_ReceiveDelete pushgateway;

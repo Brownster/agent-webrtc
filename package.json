@@ -14,7 +14,9 @@
     "build": "npm run validate",
     "dev": "npm run test:watch",
     "package": "node scripts/package-extension.js",
-    "package:zip": "npm run validate && npm run package"
+    "package:zip": "npm run validate && npm run package",
+    "prepare": "husky install",
+    "pre-commit": "npm run lint:check && npm run test"
   },
   "devDependencies": {
     "@babel/core": "^7.23.9",
@@ -28,6 +30,7 @@
     "eslint-plugin-jest": "^27.6.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
+    "husky": "^8.0.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-junit": "^16.0.0"
@@ -68,7 +71,21 @@
       "**/tests/**/*.spec.js"
     ],
     "transform": {
-      "^.+\\.js$": ["babel-jest", { "presets": [["@babel/preset-env", { "targets": { "node": "current" } }]] }]
+      "^.+\\.js$": [
+        "babel-jest",
+        {
+          "presets": [
+            [
+              "@babel/preset-env",
+              {
+                "targets": {
+                  "node": "current"
+                }
+              }
+            ]
+          ]
+        }
+      ]
     }
   },
   "eslintConfig": {
@@ -96,18 +113,26 @@
       "window": "readonly"
     },
     "rules": {
-      "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_"
+        }
+      ],
       "prefer-const": "error",
       "jest/expect-expect": "error"
     }
   },
   "babel": {
     "presets": [
-      ["@babel/preset-env", {
-        "targets": {
-          "node": "current"
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
         }
-      }]
+      ]
     ]
   },
   "keywords": [

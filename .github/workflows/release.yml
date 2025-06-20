@@ -1,15 +1,13 @@
-name: Release Chrome Extension
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
-  build-and-release:
+  test:
+    name: Pre-Release Tests
     runs-on: ubuntu-latest
     
     steps:
@@ -19,137 +17,79 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20.x'
         cache: 'npm'
         
     - name: Install dependencies
-      run: |
-        if [ -f package-lock.json ]; then
-          npm ci
-        else
-          npm install
-        fi
+      run: npm ci
       
-    - name: Run linting
-      run: npm run lint:check || echo "Linting issues found, but not failing build for now"
+    - name: Run full validation
+      run: npm run validate
       
-    - name: Run tests
-      run: npm test
+    - name: Run all tests
+      run: npm run test:ci
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
       
-    - name: Extract version from tag
-      id: version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      
-    - name: Update manifest version
-      run: |
-        sed -i 's/"version": "[^"]*"/"version": "${{ steps.version.outputs.VERSION }}"/' manifest.json
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
         
+    - name: Install dependencies
+      run: npm ci
+      
     - name: Create extension package
-      run: |
-        # Create build directory
-        mkdir -p build
-        
-        # Copy extension files (exclude development files)
-        cp manifest.json build/
-        cp *.js build/
-        cp *.html build/
-        cp -r assets build/
-        cp -r shared build/
-        cp -r grafana build/
-        cp LICENSE build/
-        cp README.md build/
-        
-        # Create zip package
-        cd build
-        zip -r "../webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip" .
-        cd ..
-        
-    - name: Generate changelog
-      id: changelog
-      run: |
-        # Extract changes since last tag
-        PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -1)
-        
-        if [ -z "$PREVIOUS_TAG" ]; then
-          echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
-        else
-          # Generate changelog from commits
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..${{ github.ref_name }} | head -20)
-          
-          # Escape newlines for GitHub output
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
-          
-          echo "CHANGELOG=${CHANGELOG}" >> $GITHUB_OUTPUT
-        fi
-        
-    - name: Create release notes
-      id: release_notes
-      run: |
-        cat > release_notes.md << 'EOF'
-        # WebRTC Stats Exporter Pro v${{ steps.version.outputs.VERSION }}
-        
-        ## 🚀 What's New
-        
-        ${{ steps.changelog.outputs.CHANGELOG }}
-        
-        ## 📦 Installation
-        
-        1. Download the `webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip` file
-        2. Extract the contents to a local folder
-        3. Open Chrome and navigate to `chrome://extensions/`
-        4. Enable "Developer mode" in the top right
-        5. Click "Load unpacked" and select the extracted folder
-        6. Configure the extension via the options page
-        
-        ## 🔧 Features
-        
-        - ✅ Automatic WebRTC stats collection from major platforms
-        - ✅ Teams, Google Meet, Amazon Connect, and Genesys Cloud support
-        - ✅ Prometheus Pushgateway integration
-        - ✅ Configurable collection intervals and filtering
-        - ✅ Real-time connection monitoring
-        - ✅ Comprehensive test coverage (80%+)
-        
-        ## 🌐 Supported Platforms
-        
-        - Microsoft Teams (`teams.microsoft.com`)
-        - Google Meet (`meet.google.com`)
-        - Amazon Connect (`awsapps.com`, `my.connect.aws`)
-        - Genesys Cloud (`*.pure.cloud`)
-        
-        ## 📋 Requirements
-        
-        - Chrome/Chromium browser
-        - Prometheus Pushgateway endpoint
-        - Network access to target platforms
-        
-        ## 🐛 Bug Reports
-        
-        Report issues at: https://github.com/Brownster/agent-webrtc/issues
-        
-        ---
-        
-        **Full Changelog**: https://github.com/Brownster/agent-webrtc/compare/${PREVIOUS_TAG:-initial}...${{ github.ref_name }}
-        EOF
-        
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      run: npm run package:zip
+      
+    - name: Extract tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: "WebRTC Stats Exporter Pro v${{ steps.version.outputs.VERSION }}"
-        body_path: release_notes.md
-        files: |
-          webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip
+        tag_name: ${{ steps.tag.outputs.tag }}
+        release_name: WebRTC Stats Exporter Pro ${{ steps.tag.outputs.tag }}
+        body: |
+          ## Changes in ${{ steps.tag.outputs.tag }}
+          
+          ### Features
+          - Automatic WebRTC statistics capture and export
+          - Enterprise-grade reliability with circuit breaker patterns
+          - Support for Teams, Google Meet, Amazon Connect, and Genesys Cloud
+          - Prometheus integration with configurable Pushgateway
+          
+          ### Installation
+          1. Download the extension package below
+          2. Extract the zip file
+          3. Load as unpacked extension in Chrome (Developer mode)
+          4. Configure via extension options
+          
+          ### Requirements
+          - Chrome browser with Manifest V3 support
+          - Prometheus Pushgateway endpoint (for metrics export)
+          
+          For detailed setup instructions, see the [README](https://github.com/Brownster/agent-webrtc/blob/master/README.md).
         draft: false
-        prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+        prerelease: false
+      
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: extension-build-v${{ steps.version.outputs.VERSION }}
-        path: |
-          build/
-          webrtc-stats-exporter-v${{ steps.version.outputs.VERSION }}.zip
-        retention-days: 30
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./webrtc-stats-exporter-pro.zip
+        asset_name: webrtc-stats-exporter-pro-${{ steps.tag.outputs.tag }}.zip
+        asset_content_type: application/zip

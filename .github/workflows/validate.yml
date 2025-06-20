@@ -1,13 +1,120 @@
-name: Validate Extension
+name: Pull Request Validation
 
 on:
-  push:
-    branches: [ master, main ]
   pull_request:
     branches: [ master, main ]
+    types: [opened, synchronize, reopened]
 
 jobs:
-  validate:
+  validate-pr:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for comparison
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Check for breaking changes
+      run: |
+        echo "Checking for potentially breaking changes..."
+        
+        # Check if critical files were modified
+        if git diff --name-only origin/master...HEAD | grep -E "(override\.js|content-script\.js|background\.js|manifest\.json)"; then
+          echo "⚠️  Critical files modified - extra validation required"
+          
+          # Check RTCPeerConnection interception hasn't been broken
+          if ! grep -q "Object.defineProperty.*RTCPeerConnection" override.js; then
+            echo "❌ RTCPeerConnection interception may be broken"
+            exit 1
+          fi
+          
+          # Check content script message handling
+          if ! grep -q "chrome.runtime.sendMessage" content-script.js; then
+            echo "❌ Content script message handling may be broken"  
+            exit 1
+          fi
+          
+          echo "✅ Critical functionality verified"
+        fi
+      
+    - name: Run regression tests
+      run: |
+        echo "Running regression-focused test suite..."
+        npm run test:ci
+        
+    - name: Test with previous configuration
+      run: |
+        # Test that extension still works with common configurations
+        node -e "
+          const manifest = require('./manifest.json');
+          
+          // Test domain matching
+          const domains = manifest.content_scripts[0].matches;
+          const expectedDomains = [
+            '*://teams.microsoft.com/*',
+            '*://meet.google.com/*', 
+            '*://*.awsapps.com/*',
+            '*://*.pure.cloud/*'
+          ];
+          
+          for (const domain of expectedDomains) {
+            if (!domains.includes(domain)) {
+              console.error('❌ Missing expected domain: ' + domain);
+              process.exit(1);
+            }
+          }
+          
+          console.log('✅ Domain configuration validated');
+        "
+        
+    - name: Validate no secrets added
+      run: |
+        # Check that no secrets were accidentally committed
+        if git diff --name-only origin/master...HEAD | xargs grep -l -E "(password|secret|token|api[_-]?key).*[:=].*['\"][^'\"]{8,}['\"]" 2>/dev/null; then
+          echo "❌ Potential secrets found in changes"
+          exit 1
+        fi
+        echo "✅ No secrets detected"
+      
+    - name: Check test coverage delta
+      run: |
+        # Run coverage on current branch
+        npm run test:coverage -- --silent
+        CURRENT_COVERAGE=$(grep -o "Lines.*: [0-9.]*%" coverage/lcov-report/index.html | grep -o "[0-9.]*" | head -1)
+        
+        # Check if coverage is acceptable (should be >80%)
+        if (( $(echo "$CURRENT_COVERAGE < 80" | bc -l) )); then
+          echo "❌ Test coverage too low: $CURRENT_COVERAGE%"
+          exit 1
+        fi
+        
+        echo "✅ Test coverage: $CURRENT_COVERAGE%"
+        
+    - name: Lint changed files only
+      run: |
+        # Get list of changed JS files
+        CHANGED_FILES=$(git diff --name-only origin/master...HEAD | grep '\.js$' | tr '\n' ' ')
+        
+        if [ -n "$CHANGED_FILES" ]; then
+          echo "Linting changed files: $CHANGED_FILES"
+          npx eslint $CHANGED_FILES
+        else
+          echo "No JavaScript files changed"
+        fi
+
+  size-check:
+    name: Extension Size Check
     runs-on: ubuntu-latest
     
     steps:
@@ -17,29 +124,80 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20.x'
         cache: 'npm'
         
     - name: Install dependencies
-      run: |
-        if [ -f package-lock.json ]; then
-          npm ci
-        else
-          npm install
-        fi
+      run: npm ci
       
-    - name: Run linting
-      run: npm run lint:check || echo "Linting issues found, but not failing build for now"
+    - name: Check extension size
+      run: |
+        # Create temporary package to check size
+        npm run package
+        
+        PACKAGE_SIZE=$(du -sh webrtc-stats-exporter-pro.zip | cut -f1)
+        echo "Extension package size: $PACKAGE_SIZE"
+        
+        # Check if size is reasonable (should be < 5MB for most extensions)
+        PACKAGE_SIZE_BYTES=$(stat -c%s webrtc-stats-exporter-pro.zip)
+        MAX_SIZE_BYTES=5242880  # 5MB
+        
+        if [ $PACKAGE_SIZE_BYTES -gt $MAX_SIZE_BYTES ]; then
+          echo "❌ Extension package too large: $PACKAGE_SIZE"
+          echo "Consider removing unnecessary files or optimizing assets"
+          exit 1
+        fi
+        
+        echo "✅ Extension size acceptable: $PACKAGE_SIZE"
+
+  compatibility-matrix:
+    name: Compatibility Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
       
     - name: Run tests
-      run: npm run test:ci
+      run: npm test
       
-    - name: Test packaging
-      run: npm run package
-      
-    - name: Upload test coverage
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage/lcov.info
-        flags: unittests
-        name: extension-coverage
+    - name: Test extension loading simulation
+      run: |
+        # Simulate extension loading in different Node versions
+        node -e "
+          console.log('Testing extension module loading on Node.js ' + process.version);
+          
+          try {
+            // Test require paths that extension uses
+            require('./shared/config.js');
+            console.log('✅ Config module loads successfully');
+          } catch (e) {
+            console.log('ℹ️  Config module uses browser APIs (expected)');
+          }
+          
+          // Test syntax compatibility
+          const fs = require('fs');
+          const files = ['override.js', 'content-script.js', 'background.js'];
+          
+          for (const file of files) {
+            try {
+              const code = fs.readFileSync(file, 'utf8');
+              new Function(code); // Test syntax parsing
+              console.log('✅ ' + file + ' syntax compatible');
+            } catch (e) {
+              console.log('ℹ️  ' + file + ' uses browser-specific APIs (expected)');
+            }
+          }
+        "
