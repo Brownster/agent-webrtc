@@ -1,5 +1,3 @@
-![Editor _ Mermaid Chart-2025-06-20-205220](https://github.com/user-attachments/assets/fe710a99-2111-45b4-bd6c-b95b37489b4f)# WebRTC Stats Exporter Pro
-
 [![WebRTC Stats Exporter CI](https://github.com/Brownster/agent-webrtc/actions/workflows/ci.yml/badge.svg)](https://github.com/Brownster/agent-webrtc/actions/workflows/ci.yml)
 [![Test Suite](https://img.shields.io/github/actions/job/status/Brownster/agent-webrtc/Test%20Suite/main?label=tests)](https://github.com/Brownster/agent-webrtc/actions/workflows/ci.yml)
 [![coverage](https://codecov.io/gh/Brownster/agent-webrtc/graph/badge.svg?branch=main)](https://codecov.io/gh/Brownster/agent-webrtc)
@@ -89,6 +87,9 @@ Access the extension options by:
 4. Metrics are formatted in Prometheus format with validation
 5. Data is exported to configured Pushgateway with automatic retry and queuing
 6. Health monitoring ensures continuous operation with automatic recovery
+
+![Editor _ Mermaid Chart-2025-06-20-205220](https://github.com/user-attachments/assets/fe710a99-2111-45b4-bd6c-b95b37489b4f)# WebRTC Stats Exporter Pro
+
 
 ## 🛠️ Development
 
