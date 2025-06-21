@@ -18,6 +18,7 @@ An enterprise-grade Chrome extension that automatically captures WebRTC statisti
 - **🔧 Auto-Recovery**: Self-healing from storage and network failures without manual intervention
 - **📦 Request Queuing**: Zero data loss through automatic request queuing during outages
 - **🧪 Battle-Tested**: Extensive test suite with over 15 files and 80%+ coverage
+- **🔒 Optional mTLS Security**: Supports routing through a secure proxy for clients requiring mutual TLS authentication
 
 ## 🛡️ Reliability Features
 
@@ -64,6 +65,7 @@ Access the extension options by:
    - **Agent ID**: Unique identifier for this agent/user
    - **Update Interval**: How often to collect stats (default: 2 seconds)
    - **Authentication**: Username/password if required
+   - **Use mTLS Proxy**: Route metrics through a secure proxy server when mutual TLS is required (configure **Proxy URL** and **API Key**)
    - **Enabled Domains**: Toggle automatic capture for specific platforms
 
 ## 🏗️ Architecture
