@@ -1,0 +1,7 @@
+{
+    // "example-key": {
+    //     "url": "http://pushgateway:9091",
+    //     "certPath": "/etc/pki/webrtc-proxy/example.crt",
+    //     "keyPath": "/etc/pki/webrtc-proxy/example.key"
+    // }
+}
