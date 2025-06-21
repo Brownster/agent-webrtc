@@ -57,6 +57,11 @@ npm run test:ci
 - **Scope**: Full extension functionality from user action to metrics export
 - **Coverage**: WebRTC stats flow, configuration changes, error recovery
 
+### Proxy Tests
+- **Purpose**: Validate optional mTLS proxy configuration
+- **Scope**: Pushgateway client, options manager, and options page UI
+- **Running**: Included in `npm test` (no special setup). Mock certificates are generated automatically in unit tests.
+
 ## Chrome Extension Testing
 
 ### Mocked APIs

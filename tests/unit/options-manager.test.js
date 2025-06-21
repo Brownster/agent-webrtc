@@ -94,6 +94,23 @@ describe('OptionsManager', () => {
       expect(result).toEqual(testOptions)
     })
 
+    test('should load proxy settings', async () => {
+      const testOptions = {
+        useProxy: true,
+        proxyUrl: 'https://proxy',
+        apiKey: 'abc'
+      }
+
+      mockStorageManager.getOptions.mockResolvedValue(testOptions)
+      mockStorageManager.onChanged.mockReturnValue(jest.fn())
+
+      await manager.initialize()
+
+      expect(manager.options.useProxy).toBe(true)
+      expect(manager.options.proxyUrl).toBe('https://proxy')
+      expect(manager.options.apiKey).toBe('abc')
+    })
+
     test('should return same promise on concurrent calls', async () => {
       mockStorageManager.getOptions.mockResolvedValue({})
       mockStorageManager.onChanged.mockReturnValue(jest.fn())
@@ -206,19 +223,56 @@ describe('OptionsManager', () => {
       expect(mockStorageManager.set).toHaveBeenCalledWith(expectedFinal)
     })
 
+    test('should update proxy settings', async () => {
+      const initialOptions = { useProxy: false }
+      const updates = { useProxy: true, proxyUrl: 'https://proxy', apiKey: 'k' }
+
+      mockStorageManager.getOptions.mockResolvedValue(initialOptions)
+      mockStorageManager.onChanged.mockReturnValue(jest.fn())
+      mockConfig.validateConfig.mockReturnValue({ isValid: true, errors: [] })
+      mockStorageManager.set.mockResolvedValue()
+
+      await manager.initialize()
+
+      mockStorageManager.getOptions.mockResolvedValueOnce(initialOptions)
+
+      await manager.updateOptions(updates)
+
+      expect(mockStorageManager.set).toHaveBeenCalledWith({
+        ...initialOptions,
+        ...updates
+      })
+    })
+
     test('should validate options before updating', async () => {
       mockStorageManager.getOptions.mockResolvedValue({})
       mockStorageManager.onChanged.mockReturnValue(jest.fn())
-      mockConfig.validateConfig.mockReturnValue({ 
-        isValid: false, 
-        errors: ['Invalid URL format'] 
+      mockConfig.validateConfig.mockReturnValue({
+        isValid: false,
+        errors: ['Invalid URL format']
       })
 
       await manager.initialize()
 
       await expect(manager.updateOptions({ url: 'invalid-url' }))
         .rejects.toThrow(OptionsError)
-      
+
+      expect(mockStorageManager.set).not.toHaveBeenCalled()
+    })
+
+    test('should reject invalid proxy settings', async () => {
+      mockStorageManager.getOptions.mockResolvedValue({})
+      mockStorageManager.onChanged.mockReturnValue(jest.fn())
+      mockConfig.validateConfig.mockReturnValue({
+        isValid: false,
+        errors: ['Proxy URL missing']
+      })
+
+      await manager.initialize()
+
+      await expect(manager.updateOptions({ useProxy: true }))
+        .rejects.toThrow(OptionsError)
+
       expect(mockStorageManager.set).not.toHaveBeenCalled()
     })
 
