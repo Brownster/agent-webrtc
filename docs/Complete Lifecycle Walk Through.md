@@ -415,7 +415,7 @@ async function sendData (method, { id, origin }, data) {
 }
 ```
 
-**Note:** The `sendData` function now contains conditional logic for the new `mtls` option. When this option (exposed as **Use mTLS Proxy**) is enabled, metrics are sent through the configured `proxyUrl` with the provided API key; otherwise they are posted directly to the Pushgateway.
+**Note:** The `sendData` function now checks the `useProxy` option. When enabled, it forwards metrics to the configured `proxyUrl` using the provided API key for mTLS authentication instead of sending directly to the Pushgateway.
 
 **Function: `pushgatewayClient.sendData()`**
 ```javascript
