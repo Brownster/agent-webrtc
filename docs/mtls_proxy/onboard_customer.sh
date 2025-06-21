@@ -8,6 +8,9 @@ CA_KEY="/etc/pki/webrtc-proxy/ca.key"
 CA_CERT="/etc/pki/webrtc-proxy/ca.crt"
 VALIDITY_DAYS=730
 PROXY_SERVICE_NAME="webrtc-proxy"
+# Base URL for the proxy used in the final output. Can be overridden by
+# setting the PROXY_BASE_URL environment variable before running the script.
+PROXY_BASE_URL="${PROXY_BASE_URL:-https://$(hostname -f)}"
 
 print_usage() {
   echo "Usage: $0 \"Customer Name\""
@@ -58,4 +61,4 @@ fi
 
 echo "\nCustomer Onboarding Complete"
 echo "API Key: $API_KEY"
-echo "Proxy URL: https://your-proxy.com/metrics/job/{job}/instance/{id}"
+echo "Proxy URL: ${PROXY_BASE_URL}/metrics/job/{job}/instance/{id}"
