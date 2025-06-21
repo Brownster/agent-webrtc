@@ -5,6 +5,7 @@ graph LR
     classDef override fill:#fff5e6,stroke:#b36200,stroke-width:2px;
     classDef background fill:#f5e6ff,stroke:#5d3780,stroke-width:2px;
     classDef pushgateway fill:#ffebe6,stroke:#c5280c,stroke-width:2px;
+    classDef proxy fill:#e6e6ff,stroke:#003399,stroke-width:2px;
 
     %% --- PHASE 1 & 2: INITIALIZATION & HOOKING ---
     subgraph Phase 1 & 2: Initialization & Options Exchange
@@ -48,15 +49,19 @@ graph LR
             Loop_Catch["Receives message"] --> Loop_Relay["chrome.runtime.sendMessage()"]
         end
         subgraph Background Script
-            Loop_Receive["Receives stats"] --> Loop_Format["Formats stats"] --> Loop_Send["sendData('POST', ...)"]
+            Loop_Receive["Receives stats"] --> Loop_Format["Formats stats"] --> Loop_Send["sendData('POST', ...)"] --> UseProxy{"useProxy?"}
+        end
+        subgraph Proxy (optional)
+            Proxy_Forward["Forwards metrics with API key"] --> Loop_Push
         end
         subgraph Pushgateway
             Loop_Push["Receives HTTP POST"]
         end
-        
+
         Loop_Dispatch -.-> Loop_Catch
         Loop_Relay -.-> Loop_Receive
-        Loop_Send --> Loop_Push
+        UseProxy -- Yes --> Proxy_Forward
+        UseProxy -- No --> Loop_Push
         Loop_Schedule --> Loop_Collect
     end
 
@@ -92,5 +97,6 @@ graph LR
     class User_Start user;
     class CS_Inject,CS_InjectOverride,CS_LoadManager,CS_GetOptions,CS_SendOptions,Loop_Catch,Loop_Relay content;
     class OS_Load,OS_Hijack,OS_Ready,OS_ReceiveOptions,App_StartCall,OS_Proxy,OS_AddPC,OS_StartStats,Loop_Collect,Loop_GetStats,Loop_Dispatch,Loop_Schedule,Term_Event,Term_Cleanup,Term_SendFinalStats override;
-    class Loop_Receive,Loop_Format,Loop_Send,Term_Check,Term_SendDelete background;
+    class Loop_Receive,Loop_Format,Loop_Send,UseProxy,Term_Check,Term_SendDelete background;
+    class Proxy_Forward proxy;
     class Loop_Push,Term_ReceiveDelete pushgateway;
