@@ -415,6 +415,8 @@ async function sendData (method, { id, origin }, data) {
 }
 ```
 
+**Note:** The `sendData` function now checks the `useProxy` option. When enabled, it forwards metrics to the configured `proxyUrl` using an API key for mTLS authentication instead of sending directly to the Pushgateway.
+
 **Function: `pushgatewayClient.sendData()`**
 ```javascript
 // pushgateway-client.js:83-150
