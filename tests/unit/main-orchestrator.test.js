@@ -244,6 +244,9 @@ describe('Main Orchestrator', () => {
         url: 'http://test.com',
         username: 'user',
         password: 'pass',
+        useProxy: false,
+        proxyUrl: '',
+        apiKey: '',
         gzip: false,
         job: 'test-job'
       }
@@ -262,6 +265,9 @@ describe('Main Orchestrator', () => {
         id: 'conn-1',
         username: 'user',
         password: 'pass',
+        useProxy: false,
+        proxyUrl: '',
+        apiKey: '',
         gzip: false,
         data: 'test-data',
         statsCallback: app.modules.statsCallback
@@ -274,6 +280,36 @@ describe('Main Orchestrator', () => {
       
       expect(app.modules.tabMonitor.updateCurrentTab).toHaveBeenCalled()
       expect(result).toBe(mockResult)
+    })
+
+    test('should send data through proxy when configured', async () => {
+      const mockResult = { success: true, statusCode: 200 }
+      app.modules.pushgatewayClient.sendData.mockResolvedValue(mockResult)
+
+      Object.assign(app.options, {
+        useProxy: true,
+        proxyUrl: 'https://proxy/metrics/job/{job}/id/{id}',
+        apiKey: 'abc',
+        username: 'user',
+        password: 'pass'
+      })
+
+      await app.sendData('POST', { id: 'c1', origin: 'https://a.com' }, 'd')
+
+      expect(app.modules.pushgatewayClient.sendData).toHaveBeenCalledWith({
+        method: 'POST',
+        url: 'http://test.com',
+        job: 'test-job',
+        id: 'c1',
+        username: 'user',
+        password: 'pass',
+        useProxy: true,
+        proxyUrl: 'https://proxy/metrics/job/{job}/id/{id}',
+        apiKey: 'abc',
+        gzip: false,
+        data: 'd',
+        statsCallback: app.modules.statsCallback
+      })
     })
 
     test('should handle DELETE requests', async () => {

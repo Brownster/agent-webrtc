@@ -78,7 +78,16 @@ class WebRTCExporterApp {
    * @returns {Promise<any>} Response from Pushgateway
    */
   async sendData (method, { id, origin }, data) {
-    const { url, username, password, gzip, job } = this.options
+    const {
+      url,
+      username,
+      password,
+      gzip,
+      job,
+      useProxy,
+      proxyUrl,
+      apiKey
+    } = this.options
 
     try {
       // Send data using pushgateway client
@@ -89,6 +98,9 @@ class WebRTCExporterApp {
         id,
         username,
         password,
+        useProxy,
+        proxyUrl,
+        apiKey,
         gzip,
         data,
         statsCallback: this.modules.statsCallback

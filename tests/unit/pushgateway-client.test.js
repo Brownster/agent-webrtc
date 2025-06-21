@@ -137,6 +137,47 @@ describe('PushgatewayClient', () => {
       )
     })
 
+    test('should use proxy when enabled', async () => {
+      const mockResponse = {
+        ok: true,
+        text: jest.fn().mockResolvedValue('Success')
+      }
+      mockFetch.mockResolvedValue(mockResponse)
+
+      await client.sendData({
+        method: 'POST',
+        useProxy: true,
+        proxyUrl: 'https://proxy.example.com/metrics/job/{job}/id/{id}',
+        apiKey: 'secret',
+        job: 'test-job',
+        id: 'test-id',
+        username: 'ignored',
+        password: 'ignored',
+        data: 'metric 1'
+      })
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://proxy.example.com/metrics/job/test-job/id/test-id',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'secret'
+          })
+        })
+      )
+      const callHeaders = mockFetch.mock.calls[0][1].headers
+      expect(callHeaders.Authorization).toBeUndefined()
+    })
+
+    test('should require proxyUrl when useProxy is true', async () => {
+      await expect(client.sendData({
+        method: 'POST',
+        useProxy: true,
+        job: 'test-job',
+        id: '1',
+        data: 'x'
+      })).rejects.toThrow('Proxy URL is required when useProxy is true')
+    })
+
     test('should handle gzip compression', async () => {
       const mockResponse = {
         ok: true,
